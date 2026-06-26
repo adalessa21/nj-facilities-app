@@ -295,7 +295,10 @@ export default function Home() {
   }
 
   // Stats
-  const vendorSet = new Set(contracts.map(c => c.vendors?.id).filter(Boolean))
+const vendorSet = new Set(contracts.map(c => {
+  const v = Array.isArray(c.vendors) ? c.vendors[0] : c.vendors
+  return v?.id
+}).filter(Boolean))
   const coopSet = new Set(contracts.map(c => c.cooperative_id))
 
   // Accessible co-ops (entity is a member)
