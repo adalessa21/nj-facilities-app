@@ -40,23 +40,37 @@ interface Contract {
   cooperatives: Cooperative | Cooperative[]
 }
 
+// Grouped contract — multiple vendors per contract card
+interface GroupedContract {
+  id: string
+  contract_name: string
+  contract_number: string
+  trade_category: string
+  status: string
+  expiration_date: string
+  notes: string
+  cooperative_id: string
+  vendorList: Vendor[]
+  coop: Cooperative
+}
+
 interface Membership {
   cooperative_id: string
 }
 
 // ── Co-op color map ───────────────────────────────────────────────────────────
 const COOP_STYLES: Record<string, { bg: string; text: string; border: string }> = {
-  ESCNJ:          { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
-  'NJ State':     { bg: 'bg-blue-100',   text: 'text-blue-700',   border: 'border-blue-300' },
-  Sourcewell:     { bg: 'bg-teal-100',   text: 'text-teal-700',   border: 'border-teal-300' },
-  OMNIA:          { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300' },
-  'Bergen Co-op': { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' },
-  'Hunterdon ESC':{ bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' },
-  NASPO:          { bg: 'bg-green-100',  text: 'text-green-800',  border: 'border-green-300' },
-  'NJ Edge':      { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-300' },
+  ESCNJ:           { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
+  'NJ State':      { bg: 'bg-blue-100',   text: 'text-blue-700',   border: 'border-blue-300' },
+  Sourcewell:      { bg: 'bg-teal-100',   text: 'text-teal-700',   border: 'border-teal-300' },
+  OMNIA:           { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300' },
+  'Bergen Co-op':  { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' },
+  'Hunterdon ESC': { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' },
+  NASPO:           { bg: 'bg-green-100',  text: 'text-green-800',  border: 'border-green-300' },
+  'NJ Edge':       { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-300' },
 }
 
-function CoopBadge({ abbr, name }: { abbr: string; name: string }) {
+function CoopBadge({ abbr }: { abbr: string }) {
   const s = COOP_STYLES[abbr] || { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' }
   const label = abbr === 'NJ State' ? 'NJ State Contract' : abbr
   return (
@@ -66,7 +80,6 @@ function CoopBadge({ abbr, name }: { abbr: string; name: string }) {
   )
 }
 
-// ── Days until expiration ─────────────────────────────────────────────────────
 function daysUntil(dateStr: string) {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000)
 }
@@ -79,36 +92,32 @@ function VendorPanel({
   onClose,
 }: {
   vendor: Vendor
-  contracts: Contract[]
+  contracts: GroupedContract[]
   entityMemberships: string[]
   onClose: () => void
 }) {
-  const normalizedContracts = contracts.map(c => ({
-  ...c,
-  cooperatives: Array.isArray(c.cooperatives) ? c.cooperatives[0] : c.cooperatives
-}))
-const eligible = normalizedContracts.filter(c => entityMemberships.includes(c.cooperative_id))
-const ineligible = normalizedContracts.filter(c => !entityMemberships.includes(c.cooperative_id))
-const trades = [...new Set(normalizedContracts.map(c => c.trade_category))]
+  // Find all contracts this vendor appears in
+  const allVendorContracts = contracts.filter(c =>
+    c.vendorList.some(v => v.id === vendor.id)
+  )
+  const eligible = allVendorContracts.filter(c => entityMemberships.includes(c.cooperative_id))
+  const ineligible = allVendorContracts.filter(c => !entityMemberships.includes(c.cooperative_id))
+  const trades = [...new Set(allVendorContracts.map(c => c.trade_category))]
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl w-full max-w-lg max-h-[88vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-4 rounded-t-xl">
           <button onClick={onClose} className="float-right text-gray-400 hover:text-gray-600 border border-gray-200 rounded px-2 py-0.5 text-sm">✕ Close</button>
-          <h2 className="text-lg font-bold text-navy pr-8">{vendor.company_name}</h2>
+          <h2 className="text-lg font-bold text-[#1F3864] pr-8">{vendor.company_name}</h2>
           <div className="flex flex-wrap gap-1 mt-1">
-            {trades.map(t => (
-              <span key={t} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{t}</span>
-            ))}
+            {trades.map(t => <span key={t} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{t}</span>)}
           </div>
         </div>
 
         <div className="px-5 py-4">
-          {/* Eligibility check */}
           <div className="flex items-center gap-2 bg-green-50 text-green-800 text-sm px-3 py-2 rounded-lg mb-4">
-            <span className="text-base">✓</span>
+            <span>✓</span>
             <span>Available via <strong>{eligible.length}</strong> cooperative contract{eligible.length !== 1 ? 's' : ''}</span>
           </div>
 
@@ -131,7 +140,6 @@ const trades = [...new Set(normalizedContracts.map(c => c.trade_category))]
             )}
           </div>
 
-          {/* Eligible contracts */}
           {eligible.length > 0 && (
             <>
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Contracts your institution can use</div>
@@ -143,7 +151,7 @@ const trades = [...new Set(normalizedContracts.map(c => c.trade_category))]
                     <div>
                       <div className="text-sm font-semibold text-gray-800">{c.contract_name}</div>
                       <div className="flex items-center gap-2 mt-1">
-                        <CoopBadge abbr={c.cooperatives.abbreviation} name={c.cooperatives.name} />
+                        <CoopBadge abbr={c.coop.abbreviation} />
                         <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{c.contract_number}</span>
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
@@ -160,7 +168,6 @@ const trades = [...new Set(normalizedContracts.map(c => c.trade_category))]
             </>
           )}
 
-          {/* Ineligible contracts */}
           {ineligible.length > 0 && (
             <>
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4">Also holds — requires different co-op membership</div>
@@ -169,7 +176,7 @@ const trades = [...new Set(normalizedContracts.map(c => c.trade_category))]
                   <div>
                     <div className="text-sm font-semibold text-gray-800">{c.contract_name}</div>
                     <div className="flex items-center gap-2 mt-1">
-                      <CoopBadge abbr={c.cooperatives.abbreviation} name={c.cooperatives.name} />
+                      <CoopBadge abbr={c.coop.abbreviation} />
                       <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{c.contract_number}</span>
                     </div>
                   </div>
@@ -192,7 +199,7 @@ const trades = [...new Set(normalizedContracts.map(c => c.trade_category))]
 export default function Home() {
   const [entities, setEntities] = useState<Entity[]>([])
   const [cooperatives, setCooperatives] = useState<Cooperative[]>([])
-  const [contracts, setContracts] = useState<Contract[]>([])
+  const [groupedContracts, setGroupedContracts] = useState<GroupedContract[]>([])
   const [trades, setTrades] = useState<string[]>([])
 
   const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null)
@@ -202,11 +209,10 @@ export default function Home() {
   const [query, setQuery] = useState('')
 
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null)
-  const [vendorContracts, setVendorContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(false)
 
   // Load initial data
- useEffect(() => {
+  useEffect(() => {
     async function load() {
       const [{ data: ents }, { data: coops }] = await Promise.all([
         supabase.from('entities').select('id, name, type, county').order('type').order('name'),
@@ -222,7 +228,7 @@ export default function Home() {
   useEffect(() => {
     if (!selectedEntity) {
       setEntityMemberships([])
-      setContracts([])
+      setGroupedContracts([])
       setTrades([])
       return
     }
@@ -237,7 +243,7 @@ export default function Home() {
     loadMemberships()
   }, [selectedEntity])
 
-  // Search contracts
+  // Search and group contracts
   const search = useCallback(async () => {
     if (!selectedEntity || entityMemberships.length === 0) return
     setLoading(true)
@@ -262,30 +268,47 @@ export default function Home() {
 
     const { data, error } = await q
     if (error) console.error(error)
+
     if (data) {
-      setContracts(data as unknown as Contract[])
-      const uniqueTrades = [...new Set(data.map((c: Contract) => c.trade_category))].sort()
-      setTrades(uniqueTrades as string[])
+      // Group by contract_number + cooperative_id so one card = one contract
+      const grouped: Record<string, GroupedContract> = {}
+
+      data.forEach((row: Contract) => {
+        const key = `${row.contract_number}||${row.cooperative_id}`
+        const coop = (Array.isArray(row.cooperatives) ? row.cooperatives[0] : row.cooperatives) as Cooperative
+        const vendor = (Array.isArray(row.vendors) ? row.vendors[0] : row.vendors) as Vendor
+
+        if (!grouped[key]) {
+          grouped[key] = {
+            id: row.id,
+            contract_name: row.contract_name,
+            contract_number: row.contract_number,
+            trade_category: row.trade_category,
+            status: row.status,
+            expiration_date: row.expiration_date,
+            notes: row.notes,
+            cooperative_id: row.cooperative_id,
+            vendorList: [],
+            coop,
+          }
+        }
+
+        // Add vendor if not already in the list
+        if (vendor && !grouped[key].vendorList.find(v => v.id === vendor.id)) {
+          grouped[key].vendorList.push(vendor)
+        }
+      })
+
+      const result = Object.values(grouped)
+      setGroupedContracts(result)
+      const uniqueTrades = [...new Set(result.map(c => c.trade_category))].sort()
+      setTrades(uniqueTrades)
     }
+
     setLoading(false)
   }, [selectedEntity, entityMemberships, selectedTrade, selectedCoop, query])
 
   useEffect(() => { search() }, [search])
-
-  // Open vendor panel
-  async function openVendor(vendor: Vendor) {
-    setSelectedVendor(vendor)
-    const { data } = await supabase
-      .from('contracts')
-      .select(`
-        id, contract_name, contract_number, trade_category,
-        status, expiration_date, cooperative_id,
-        cooperatives ( id, name, abbreviation, display_color )
-      `)
-      .eq('vendor_id', vendor.id)
-      .in('status', ['active', 'extended'])
-    if (data) setVendorContracts(data as unknown as Contract[])
-  }
 
   // Grouped entities for dropdown
   const grouped = {
@@ -295,14 +318,8 @@ export default function Home() {
   }
 
   // Stats
-const vendorSet = new Set(contracts.map(c => {
-  const v = Array.isArray(c.vendors) ? c.vendors[0] : c.vendors
-  return v?.id
-}).filter(Boolean))
-  const coopSet = new Set(contracts.map(c => c.cooperative_id))
-
-  // Accessible co-ops (entity is a member)
-  const accessibleCoops = cooperatives.filter(c => entityMemberships.includes(c.id))
+  const vendorSet = new Set(groupedContracts.flatMap(c => c.vendorList.map(v => v.id)))
+  const coopSet = new Set(groupedContracts.map(c => c.cooperative_id))
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -311,7 +328,7 @@ const vendorSet = new Set(contracts.map(c => {
         <div className="max-w-4xl mx-auto px-4 py-5">
           <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform · Beta</div>
           <h1 className="text-xl font-bold">
-            Can <span className="text-[#4ecba0]" id="entity-display">{selectedEntity?.name || 'your institution'}</span> use this vendor?
+            Can <span className="text-[#4ecba0]">{selectedEntity?.name || 'your institution'}</span> use this vendor?
           </h1>
           <p className="text-white/60 text-sm mt-1">
             ESCNJ · NJ State Contract · Sourcewell · OMNIA · Bergen Co-op · Hunterdon ESC · NASPO · NJ Edge
@@ -357,7 +374,6 @@ const vendorSet = new Set(contracts.map(c => {
 
       <main className="max-w-4xl mx-auto px-4 py-5">
         {!selectedEntity ? (
-          /* Intro screen */
           <div className="bg-white border border-gray-200 rounded-xl p-8 text-center mt-4">
             <div className="text-4xl mb-3">🏛️</div>
             <h2 className="text-lg font-bold text-[#1F3864] mb-2">Find compliant vendors in seconds</h2>
@@ -368,7 +384,7 @@ const vendorSet = new Set(contracts.map(c => {
               <li>✓ Real contracts across 8 co-ops</li>
               <li>✓ 28 NJ public institutions</li>
               <li>✓ Filter by trade and by cooperative</li>
-              <li>✓ Vendor phone, email & website</li>
+              <li>✓ Vendor phone, email &amp; website</li>
               <li>✓ Free for all NJ public institutions</li>
             </ul>
           </div>
@@ -377,7 +393,7 @@ const vendorSet = new Set(contracts.map(c => {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 mb-4">
               {[
-                { n: contracts.length, l: 'contracts available' },
+                { n: groupedContracts.length, l: 'contracts available' },
                 { n: vendorSet.size, l: 'vendors available' },
                 { n: coopSet.size, l: 'co-ops accessible' },
               ].map(s => (
@@ -423,8 +439,7 @@ const vendorSet = new Set(contracts.map(c => {
                 {cooperatives.map(c => {
                   const isMember = entityMemberships.includes(c.id)
                   const isActive = selectedCoop === c.id
-                  const abbr = c.abbreviation
-                  const s = COOP_STYLES[abbr] || { bg: '', text: '', border: '' }
+                  const s = COOP_STYLES[c.abbreviation] || { bg: '', text: '', border: '' }
                   return (
                     <button
                       key={c.id}
@@ -436,7 +451,7 @@ const vendorSet = new Set(contracts.map(c => {
                         ${isActive ? `${s.bg} ${s.text} ${s.border} font-semibold` : ''}
                       `}
                     >
-                      {abbr === 'NJ State' ? 'NJ State Contract' : abbr}
+                      {c.abbreviation === 'NJ State' ? 'NJ State Contract' : c.abbreviation}
                     </button>
                   )
                 })}
@@ -446,7 +461,7 @@ const vendorSet = new Set(contracts.map(c => {
             {/* Results header */}
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm text-gray-500">
-                {loading ? 'Searching...' : `${contracts.length} contract${contracts.length !== 1 ? 's' : ''} found`}
+                {loading ? 'Searching...' : `${groupedContracts.length} contract${groupedContracts.length !== 1 ? 's' : ''} found`}
                 {selectedTrade && ` · ${selectedTrade}`}
                 {selectedCoop && ` · ${cooperatives.find(c => c.id === selectedCoop)?.abbreviation}`}
               </span>
@@ -456,24 +471,24 @@ const vendorSet = new Set(contracts.map(c => {
             </div>
 
             {/* Contract cards */}
-            {contracts.length === 0 && !loading ? (
+            {groupedContracts.length === 0 && !loading ? (
               <div className="text-center py-12 text-gray-400">No contracts match. Try adjusting the filters.</div>
             ) : (
-              contracts.map(c => {
-                const vendor = Array.isArray(c.vendors) ? c.vendors[0] : c.vendors
-                const coop = Array.isArray(c.cooperatives) ? c.cooperatives[0] : c.cooperatives
+              groupedContracts.map(c => {
                 const days = daysUntil(c.expiration_date)
                 const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                const isPending = !vendor || vendor.company_name.startsWith('[')
+                const isPending = c.vendorList.length === 0 || c.vendorList[0]?.company_name?.startsWith('[')
+                const coopAbbr = c.coop?.abbreviation || ''
+                const coopLabel = coopAbbr === 'NJ State' ? 'NJ State Contract' : coopAbbr
 
                 return (
-                  <div key={c.id} className="bg-white border border-gray-200 rounded-xl p-4 mb-2 hover:border-teal-400 transition-colors">
+                  <div key={`${c.contract_number}-${c.cooperative_id}`} className="bg-white border border-gray-200 rounded-xl p-4 mb-2 hover:border-teal-400 transition-colors">
                     <div className="flex justify-between items-start gap-2 mb-1.5">
                       <div>
                         <div className="font-bold text-sm text-gray-800">{c.contract_name}</div>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{c.trade_category}</span>
-                          {coop && <CoopBadge abbr={coop.abbreviation} name={coop.name} />}
+                          <CoopBadge abbr={coopAbbr} />
                         </div>
                       </div>
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -497,26 +512,29 @@ const vendorSet = new Set(contracts.map(c => {
                       {isPending ? (
                         <span className="text-gray-300">Verification in progress</span>
                       ) : (
-                        <button
-                          onClick={() => openVendor(vendor)}
-                          className="text-teal-600 underline underline-offset-2 hover:text-teal-800"
-                        >
-                          {vendor.company_name}
-                        </button>
+                        c.vendorList.map((v, i) => (
+                          <span key={v.id}>
+                            <button
+                              onClick={() => setSelectedVendor(v)}
+                              className="text-teal-600 underline underline-offset-2 hover:text-teal-800"
+                            >
+                              {v.company_name}
+                            </button>
+                            {i < c.vendorList.length - 1 && <span className="text-gray-300 mx-1">·</span>}
+                          </span>
+                        ))
                       )}
                     </div>
 
                     <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
                       <span>✓</span>
-                      <span>
-                        {selectedEntity.name} eligible via {coop?.abbreviation === 'NJ State' ? 'NJ State Contract' : coop?.abbreviation} — competitively bid cooperative pricing
-                      </span>
+                      <span>{selectedEntity.name} eligible via {coopLabel} — competitively bid cooperative pricing</span>
                       {!isPending && (
                         <button
-                          onClick={() => openVendor(vendor)}
+                          onClick={() => setSelectedVendor(c.vendorList[0])}
                           className="ml-auto text-teal-600 underline underline-offset-2 hover:text-teal-800 whitespace-nowrap"
                         >
-                          View profile →
+                          View profiles →
                         </button>
                       )}
                     </div>
@@ -532,9 +550,9 @@ const vendorSet = new Set(contracts.map(c => {
       {selectedVendor && (
         <VendorPanel
           vendor={selectedVendor}
-          contracts={vendorContracts}
+          contracts={groupedContracts}
           entityMemberships={entityMemberships}
-          onClose={() => { setSelectedVendor(null); setVendorContracts([]) }}
+          onClose={() => setSelectedVendor(null)}
         />
       )}
     </div>
