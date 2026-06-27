@@ -11,6 +11,7 @@ interface Vendor {
   email: string
   website: string
   service_area: string
+  cert_url: string
   emergency_available: boolean
   listing_tier: string
   verified: boolean
@@ -33,6 +34,7 @@ export default function AdminVendors() {
     email: '',
     website: '',
     service_area: '',
+    cert_url: '',
     emergency_available: false,
     listing_tier: 'basic',
     verified: true,
@@ -59,13 +61,14 @@ export default function AdminVendors() {
     setMessage('')
   }
 
-  function openEdit(v: Vendor) {
+ function openEdit(v: Vendor) {
     setForm({
       company_name: v.company_name,
       phone: v.phone || '',
       email: v.email || '',
       website: v.website || '',
       service_area: v.service_area || '',
+      cert_url: v.cert_url || '',
       emergency_available: v.emergency_available || false,
       listing_tier: v.listing_tier || 'basic',
       verified: v.verified || false,
@@ -158,6 +161,7 @@ export default function AdminVendors() {
                 { label: 'Email', key: 'email', placeholder: 'contact@company.com' },
                 { label: 'Website', key: 'website', placeholder: 'company.com' },
                 { label: 'Service Area', key: 'service_area', placeholder: 'e.g. NJ, NY, PA' },
+                { label: 'Cert / Documents URL', key: 'cert_url', placeholder: 'e.g. https://co.bergen.nj.us/vendors/abc-electric' },
                 { label: 'Notes', key: 'notes', placeholder: 'Internal notes' },
               ].map(f => (
                 <div key={f.key}>

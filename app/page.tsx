@@ -506,6 +506,7 @@ export default function Home() {
                     </div>
 
                     {c.notes && <div className="text-xs text-gray-400 mb-2">{c.notes}</div>}
+                    {!!(c as any).source_url && <div className="mb-2"><a href={(c as any).source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2">📋 View source document →</a></div>}
 
                     <div className="text-xs text-gray-500 mb-2">
                       <span className="font-semibold text-gray-700">Vendors: </span>

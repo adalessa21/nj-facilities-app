@@ -41,6 +41,7 @@ interface GroupedContractRow {
   coopAbbr: string
   vendorNames: string[]
   contractIds: string[]
+  source_url?: string
 }
 
 export default function AdminContracts() {
@@ -57,7 +58,7 @@ export default function AdminContracts() {
   const [message, setMessage] = useState('')
 
   // Form state
-  const emptyForm = {
+const emptyForm = {
     cooperative_id: '',
     contract_number: '',
     contract_name: '',
@@ -65,6 +66,7 @@ export default function AdminContracts() {
     status: 'active',
     expiration_date: '',
     notes: '',
+    source_url: '',
   }
   const [form, setForm] = useState(emptyForm)
   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([])
@@ -133,6 +135,7 @@ export default function AdminContracts() {
       status: group.status,
       expiration_date: group.expiration_date?.split('T')[0] || '',
       notes: group.notes || '',
+      source_url: group.source_url || '',
     })
     // Pre-select vendors in this group
     const preSelected = vendors
@@ -346,6 +349,17 @@ export default function AdminContracts() {
                   placeholder="Brief description shown on contract card"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Source Document URL</label>
+                <input
+                  type="text"
+                  value={form.source_url || ''}
+                  onChange={e => setForm({ ...form, source_url: e.target.value })}
+                  placeholder="e.g. https://escnj.us/co-op-pricing/members-section/hvac-escnj-2324-23"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                <p className="text-xs text-gray-400 mt-1">Direct link to the co-op's page for this contract. Users click "View source →" to go there.</p>
               </div>
             </div>
 
