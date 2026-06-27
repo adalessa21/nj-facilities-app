@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   function handleLogin() {
     // Change this password to something only you know
-    if (password === 'njfacilities2026') {
+    if (password === 'Raiders#21ad!') {
       sessionStorage.setItem('admin_authed', 'true')
       setAuthed(true)
       setError(false)
