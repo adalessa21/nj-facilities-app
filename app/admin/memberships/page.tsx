@@ -26,12 +26,14 @@ export default function AdminMemberships() {
   const [search, setSearch] = useState('')
   const [filterCoop, setFilterCoop] = useState('all')
   const [showForm, setShowForm] = useState(false)
-  const [editingMembership, setEditingMembership] = useState<Membership | null>(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
-  const emptyForm = { entity_id: '', cooperative_id: '', status: 'confirmed', verified_by: '', notes: '' }
-  const [form, setForm] = useState(emptyForm)
+  // Bulk form state
+  const [selectedEntityId, setSelectedEntityId] = useState('')
+  const [selectedCoopIds, setSelectedCoopIds] = useState<string[]>([])
+  const [bulkStatus, setBulkStatus] = useState('confirmed')
+  const [bulkVerifiedBy, setBulkVerifiedBy] = useState('')
 
   useEffect(() => { loadData() }, [])
 
@@ -48,30 +50,62 @@ export default function AdminMemberships() {
     setLoading(false)
   }
 
-  function openAdd() { setForm(emptyForm); setEditingMembership(null); setShowForm(true); setMessage('') }
+  // Get existing co-op memberships for selected entity
+  const existingCoopIds = memberships
+    .filter(m => m.entity_id === selectedEntityId)
+    .map(m => m.cooperative_id)
 
-  function openEdit(m: Membership) {
-    setForm({ entity_id: m.entity_id, cooperative_id: m.cooperative_id, status: m.status, verified_by: m.verified_by || '', notes: m.notes || '' })
-    setEditingMembership(m); setShowForm(true); setMessage('')
+  function toggleCoop(coopId: string) {
+    setSelectedCoopIds(prev =>
+      prev.includes(coopId) ? prev.filter(id => id !== coopId) : [...prev, coopId]
+    )
   }
 
-  async function save() {
-    if (!form.entity_id || !form.cooperative_id) { setMessage('Institution and co-op are required.'); return }
+  function openBulkForm() {
+    setSelectedEntityId('')
+    setSelectedCoopIds([])
+    setBulkStatus('confirmed')
+    setBulkVerifiedBy('')
+    setShowForm(true)
+    setMessage('')
+  }
+
+  // When entity changes, pre-check existing memberships
+  function handleEntityChange(entityId: string) {
+    setSelectedEntityId(entityId)
+    const existing = memberships
+      .filter(m => m.entity_id === entityId)
+      .map(m => m.cooperative_id)
+    setSelectedCoopIds(existing)
+  }
+
+  async function saveBulk() {
+    if (!selectedEntityId) { setMessage('Please select an institution.'); return }
+    if (selectedCoopIds.length === 0) { setMessage('Please select at least one co-op.'); return }
     setSaving(true); setMessage('')
-    if (editingMembership) {
-      const { error } = await supabase.from('memberships').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editingMembership.id)
-      if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
-      setMessage('✓ Membership updated successfully')
-    } else {
-      const { error } = await supabase.from('memberships').insert(form)
-      if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
-      setMessage('✓ Membership added successfully')
-    }
-    setSaving(false); setShowForm(false); loadData()
+
+    // Delete existing memberships for this entity
+    await supabase.from('memberships').delete().eq('entity_id', selectedEntityId)
+
+    // Insert new ones
+    const inserts = selectedCoopIds.map(coopId => ({
+      entity_id: selectedEntityId,
+      cooperative_id: coopId,
+      status: bulkStatus,
+      verified_by: bulkVerifiedBy,
+    }))
+
+    const { error } = await supabase.from('memberships').insert(inserts)
+    if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
+
+    setMessage(`✓ Saved ${inserts.length} membership${inserts.length !== 1 ? 's' : ''} for ${entities.find(e => e.id === selectedEntityId)?.name}`)
+    setSaving(false)
+    setShowForm(false)
+    loadData()
   }
 
   async function deleteMembership(id: string) {
-    if (!confirm('Delete this membership? This cannot be undone.')) return
+    if (!confirm('Delete this membership?')) return
     const { error } = await supabase.from('memberships').delete().eq('id', id)
     if (error) { alert('Error: ' + error.message); return }
     loadData()
@@ -83,6 +117,14 @@ export default function AdminMemberships() {
       m.cooperatives?.abbreviation?.toLowerCase().includes(search.toLowerCase())
     const matchCoop = filterCoop === 'all' || m.cooperative_id === filterCoop
     return matchSearch && matchCoop
+  })
+
+  // Group filtered memberships by entity for display
+  const byEntity: Record<string, Membership[]> = {}
+  filtered.forEach(m => {
+    const key = m.entity_id
+    if (!byEntity[key]) byEntity[key] = []
+    byEntity[key].push(m)
   })
 
   return (
@@ -98,7 +140,9 @@ export default function AdminMemberships() {
       <div className="max-w-6xl mx-auto px-6 py-6">
         <div className="flex items-center justify-between mb-5">
           <Link href="/admin" className="text-sm text-teal-600 hover:text-teal-800 underline underline-offset-2">← Back to admin</Link>
-          <button onClick={openAdd} className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">+ Add Membership</button>
+          <button onClick={openBulkForm} className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">
+            + Add / Update Memberships
+          </button>
         </div>
 
         {message && (
@@ -107,82 +151,131 @@ export default function AdminMemberships() {
           </div>
         )}
 
-        {/* Info box */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5 text-sm text-blue-800">
           <strong>This is the most important table.</strong> It controls which institutions can see which co-op contracts.
-          When a new institution joins a co-op, add a membership here and they'll immediately see all contracts from that co-op.
+          Use <strong>Add / Update Memberships</strong> to set all co-ops for an institution at once.
         </div>
 
+        {/* Bulk form */}
         {showForm && (
           <div className="bg-white border border-gray-200 rounded-xl p-5 mb-5">
-            <h2 className="font-bold text-gray-800 mb-4">{editingMembership ? 'Edit Membership' : 'Add New Membership'}</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Institution *</label>
-                <select value={form.entity_id} onChange={e => setForm({ ...form, entity_id: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                  <option value="">Select institution...</option>
-                  <optgroup label="Public Universities">
-                    {entities.filter(e => e.type === 'university').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </optgroup>
-                  <optgroup label="County Colleges">
-                    {entities.filter(e => e.type === 'county_college').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </optgroup>
-                  <optgroup label="County Governments">
-                    {entities.filter(e => e.type === 'county_gov').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </optgroup>
-                  <optgroup label="Municipalities">
-                    {entities.filter(e => e.type === 'municipality').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </optgroup>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Cooperative *</label>
-                <select value={form.cooperative_id} onChange={e => setForm({ ...form, cooperative_id: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                  <option value="">Select co-op...</option>
-                  {coops.map(c => <option key={c.id} value={c.id}>{c.abbreviation} — {c.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Status</label>
-                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                  <option value="confirmed">Confirmed</option>
-                  <option value="unverified">Unverified</option>
-                  <option value="pending">Pending</option>
-                  <option value="not_member">Not a member</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Verified By</label>
-                <input type="text" value={form.verified_by} onChange={e => setForm({ ...form, verified_by: e.target.value })}
-                  placeholder="e.g. ESCNJ public member list"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-              </div>
-              <div className="col-span-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Notes</label>
-                <input type="text" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Any additional notes"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-              </div>
+            <h2 className="font-bold text-gray-800 mb-1">Add / Update Memberships</h2>
+            <p className="text-sm text-gray-500 mb-4">Select an institution and check all co-ops they belong to. This will replace their existing memberships.</p>
+
+            {/* Institution selector */}
+            <div className="mb-4">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Institution *</label>
+              <select
+                value={selectedEntityId}
+                onChange={e => handleEntityChange(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              >
+                <option value="">Select institution...</option>
+                <optgroup label="Public Universities">
+                  {entities.filter(e => e.type === 'university').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </optgroup>
+                <optgroup label="County Colleges">
+                  {entities.filter(e => e.type === 'county_college').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </optgroup>
+                <optgroup label="County Governments">
+                  {entities.filter(e => e.type === 'county_gov').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </optgroup>
+                <optgroup label="Municipalities">
+                  {entities.filter(e => e.type === 'municipality').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </optgroup>
+              </select>
             </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={save} disabled={saving}
-                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-lg">
-                {saving ? 'Saving...' : editingMembership ? 'Save Changes' : 'Add Membership'}
+
+            {/* Co-op checkboxes */}
+            {selectedEntityId && (
+              <>
+                <div className="mb-3">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">
+                    Select Co-ops * <span className="text-gray-400 font-normal normal-case">({selectedCoopIds.length} selected)</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {coops.map(c => {
+                      const isChecked = selectedCoopIds.includes(c.id)
+                      return (
+                        <label
+                          key={c.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isChecked ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleCoop(c.id)}
+                            className="w-4 h-4 accent-green-600"
+                          />
+                          <div>
+                            <div className="text-sm font-semibold text-gray-800">{c.abbreviation}</div>
+                            <div className="text-xs text-gray-500">{c.name}</div>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Status</label>
+                    <select
+                      value={bulkStatus}
+                      onChange={e => setBulkStatus(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                    >
+                      <option value="confirmed">Confirmed</option>
+                      <option value="unverified">Unverified</option>
+                      <option value="pending">Pending</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Verified By</label>
+                    <input
+                      type="text"
+                      value={bulkVerifiedBy}
+                      onChange={e => setBulkVerifiedBy(e.target.value)}
+                      placeholder="e.g. ESCNJ public member list"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={saveBulk}
+                disabled={saving || !selectedEntityId || selectedCoopIds.length === 0}
+                className="bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white text-sm font-semibold px-5 py-2.5 rounded-lg"
+              >
+                {saving ? 'Saving...' : `Save ${selectedCoopIds.length} Membership${selectedCoopIds.length !== 1 ? 's' : ''}`}
               </button>
-              <button onClick={() => { setShowForm(false); setMessage('') }}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-5 py-2.5 rounded-lg">Cancel</button>
+              <button
+                onClick={() => { setShowForm(false); setMessage('') }}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-5 py-2.5 rounded-lg"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}
 
+        {/* Filters */}
         <div className="flex gap-3 mb-4">
-          <input type="text" placeholder="Search institutions or co-ops..." value={search} onChange={e => setSearch(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-          <select value={filterCoop} onChange={e => setFilterCoop(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          <input
+            type="text"
+            placeholder="Search institutions or co-ops..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+          />
+          <select
+            value={filterCoop}
+            onChange={e => setFilterCoop(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          >
             <option value="all">All co-ops</option>
             {coops.map(c => <option key={c.id} value={c.id}>{c.abbreviation}</option>)}
           </select>
@@ -190,7 +283,9 @@ export default function AdminMemberships() {
 
         <div className="text-sm text-gray-500 mb-3">{filtered.length} memberships</div>
 
-        {loading ? <div className="text-center py-12 text-gray-400">Loading...</div> : (
+        {loading ? (
+          <div className="text-center py-12 text-gray-400">Loading...</div>
+        ) : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -221,7 +316,12 @@ export default function AdminMemberships() {
                     <td className="px-4 py-3 text-gray-500 text-xs">{m.verified_by || '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
-                        <button onClick={() => openEdit(m)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button>
+                        <button
+                          onClick={() => { handleEntityChange(m.entity_id); setShowForm(true); }}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Edit all
+                        </button>
                         <button onClick={() => deleteMembership(m.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">Delete</button>
                       </div>
                     </td>
@@ -229,6 +329,9 @@ export default function AdminMemberships() {
                 ))}
               </tbody>
             </table>
+            {filtered.length === 0 && (
+              <div className="text-center py-8 text-gray-400">No memberships match your search.</div>
+            )}
           </div>
         )}
       </div>

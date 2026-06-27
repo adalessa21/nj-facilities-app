@@ -29,6 +29,20 @@ const TRADES = [
   'Equipment Rental','Furniture','Paving'
 ]
 
+// Group contracts by contract_number + cooperative_id for display
+interface GroupedContractRow {
+  contract_number: string
+  contract_name: string
+  trade_category: string
+  status: string
+  expiration_date: string
+  notes: string
+  cooperative_id: string
+  coopAbbr: string
+  vendorNames: string[]
+  contractIds: string[]
+}
+
 export default function AdminContracts() {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
@@ -38,12 +52,12 @@ export default function AdminContracts() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterTrade, setFilterTrade] = useState('all')
   const [showForm, setShowForm] = useState(false)
-  const [editingContract, setEditingContract] = useState<Contract | null>(null)
+  const [editingGroup, setEditingGroup] = useState<GroupedContractRow | null>(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
+  // Form state
   const emptyForm = {
-    vendor_id: '',
     cooperative_id: '',
     contract_number: '',
     contract_name: '',
@@ -53,10 +67,10 @@ export default function AdminContracts() {
     notes: '',
   }
   const [form, setForm] = useState(emptyForm)
+  const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([])
+  const [vendorSearch, setVendorSearch] = useState('')
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setLoading(true)
@@ -74,70 +88,144 @@ export default function AdminContracts() {
     setLoading(false)
   }
 
+  // Group contracts by contract_number + cooperative_id
+  function getGrouped(contractList: Contract[]): GroupedContractRow[] {
+    const grouped: Record<string, GroupedContractRow> = {}
+    contractList.forEach(c => {
+      const key = `${c.contract_number}||${c.cooperative_id}`
+      if (!grouped[key]) {
+        grouped[key] = {
+          contract_number: c.contract_number,
+          contract_name: c.contract_name,
+          trade_category: c.trade_category,
+          status: c.status,
+          expiration_date: c.expiration_date,
+          notes: c.notes || '',
+          cooperative_id: c.cooperative_id,
+          coopAbbr: c.cooperatives?.abbreviation || '',
+          vendorNames: [],
+          contractIds: [],
+        }
+      }
+      if (c.vendors?.company_name && !grouped[key].vendorNames.includes(c.vendors.company_name)) {
+        grouped[key].vendorNames.push(c.vendors.company_name)
+      }
+      grouped[key].contractIds.push(c.id)
+    })
+    return Object.values(grouped)
+  }
+
   function openAdd() {
     setForm(emptyForm)
-    setEditingContract(null)
+    setSelectedVendorIds([])
+    setVendorSearch('')
+    setEditingGroup(null)
     setShowForm(true)
     setMessage('')
   }
 
-  function openEdit(c: Contract) {
+  function openEdit(group: GroupedContractRow) {
     setForm({
-      vendor_id: c.vendor_id,
-      cooperative_id: c.cooperative_id,
-      contract_number: c.contract_number,
-      contract_name: c.contract_name,
-      trade_category: c.trade_category,
-      status: c.status,
-      expiration_date: c.expiration_date?.split('T')[0] || '',
-      notes: c.notes || '',
+      cooperative_id: group.cooperative_id,
+      contract_number: group.contract_number,
+      contract_name: group.contract_name,
+      trade_category: group.trade_category,
+      status: group.status,
+      expiration_date: group.expiration_date?.split('T')[0] || '',
+      notes: group.notes || '',
     })
-    setEditingContract(c)
+    // Pre-select vendors in this group
+    const preSelected = vendors
+      .filter(v => group.vendorNames.includes(v.company_name))
+      .map(v => v.id)
+    setSelectedVendorIds(preSelected)
+    setVendorSearch('')
+    setEditingGroup(group)
     setShowForm(true)
     setMessage('')
+  }
+
+  function toggleVendor(vendorId: string) {
+    setSelectedVendorIds(prev =>
+      prev.includes(vendorId) ? prev.filter(id => id !== vendorId) : [...prev, vendorId]
+    )
   }
 
   async function save() {
-    if (!form.vendor_id || !form.cooperative_id || !form.contract_name || !form.expiration_date) {
+    if (!form.cooperative_id || !form.contract_name || !form.expiration_date) {
       setMessage('Please fill in all required fields.')
+      return
+    }
+    if (selectedVendorIds.length === 0) {
+      setMessage('Please select at least one vendor.')
       return
     }
     setSaving(true)
     setMessage('')
-    if (editingContract) {
-      const { error } = await supabase
-        .from('contracts')
-        .update({ ...form, updated_at: new Date().toISOString() })
-        .eq('id', editingContract.id)
-      if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
-      setMessage('✓ Contract updated successfully')
-    } else {
-      const { error } = await supabase.from('contracts').insert(form)
-      if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
-      setMessage('✓ Contract added successfully')
+
+    // If editing, delete old contract rows for this group first
+    if (editingGroup) {
+      await supabase.from('contracts').delete().in('id', editingGroup.contractIds)
     }
+
+    // Insert one row per vendor
+    const inserts = selectedVendorIds.map(vendorId => ({
+      vendor_id: vendorId,
+      cooperative_id: form.cooperative_id,
+      contract_number: form.contract_number,
+      contract_name: form.contract_name,
+      trade_category: form.trade_category,
+      status: form.status,
+      expiration_date: form.expiration_date,
+      notes: form.notes,
+    }))
+
+    const { error } = await supabase.from('contracts').insert(inserts)
+    if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
+
+    setMessage(`✓ Contract saved with ${inserts.length} vendor${inserts.length !== 1 ? 's' : ''}`)
     setSaving(false)
     setShowForm(false)
     loadData()
   }
 
-  async function deleteContract(id: string, name: string) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
-    const { error } = await supabase.from('contracts').delete().eq('id', id)
+  async function deleteGroup(group: GroupedContractRow) {
+    if (!confirm(`Delete "${group.contract_name}" and all ${group.contractIds.length} vendor rows? This cannot be undone.`)) return
+    const { error } = await supabase.from('contracts').delete().in('id', group.contractIds)
     if (error) { alert('Error: ' + error.message); return }
     loadData()
   }
 
-  const filtered = contracts.filter(c => {
+  // Quick extend by 1 year
+  async function extendOneYear(group: GroupedContractRow) {
+    const current = new Date(group.expiration_date)
+    current.setFullYear(current.getFullYear() + 1)
+    const newDate = current.toISOString().split('T')[0]
+    const { error } = await supabase
+      .from('contracts')
+      .update({ expiration_date: newDate, status: 'extended' })
+      .in('id', group.contractIds)
+    if (error) { alert('Error: ' + error.message); return }
+    setMessage(`✓ Extended "${group.contract_name}" to ${newDate}`)
+    loadData()
+  }
+
+  const allGrouped = getGrouped(contracts)
+
+  const filtered = allGrouped.filter(g => {
     const matchSearch = !search ||
-      c.contract_name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.contract_number?.toLowerCase().includes(search.toLowerCase()) ||
-      c.vendors?.company_name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.cooperatives?.abbreviation?.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = filterStatus === 'all' || c.status === filterStatus
-    const matchTrade = filterTrade === 'all' || c.trade_category === filterTrade
+      g.contract_name?.toLowerCase().includes(search.toLowerCase()) ||
+      g.contract_number?.toLowerCase().includes(search.toLowerCase()) ||
+      g.vendorNames.some(v => v.toLowerCase().includes(search.toLowerCase())) ||
+      g.coopAbbr?.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = filterStatus === 'all' || g.status === filterStatus
+    const matchTrade = filterTrade === 'all' || g.trade_category === filterTrade
     return matchSearch && matchStatus && matchTrade
   })
+
+  const filteredVendors = vendors.filter(v =>
+    !vendorSearch || v.company_name.toLowerCase().includes(vendorSearch.toLowerCase())
+  )
 
   function daysUntil(d: string) {
     return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)
@@ -145,32 +233,29 @@ export default function AdminContracts() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-[#1F3864] text-white px-6 py-5">
         <div className="max-w-6xl mx-auto">
           <div className="text-xs tracking-widest uppercase text-white/50 mb-1">Admin Portal</div>
           <h1 className="text-2xl font-bold">Contracts</h1>
           <p className="text-white/60 text-sm mt-1">
-            Manage all cooperative contracts — {contracts.length} total
+            Manage all cooperative contracts — {allGrouped.length} contracts · {contracts.length} vendor rows
           </p>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
-        {/* Nav */}
         <div className="flex items-center justify-between mb-5">
           <Link href="/admin" className="text-sm text-teal-600 hover:text-teal-800 underline underline-offset-2">
             ← Back to admin
           </Link>
           <button
             onClick={openAdd}
-            className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg"
           >
             + Add Contract
           </button>
         </div>
 
-        {/* Message */}
         {message && (
           <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium ${message.startsWith('✓') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
             {message}
@@ -180,44 +265,37 @@ export default function AdminContracts() {
         {/* Add/Edit Form */}
         {showForm && (
           <div className="bg-white border border-gray-200 rounded-xl p-5 mb-5">
-            <h2 className="font-bold text-gray-800 mb-4">
-              {editingContract ? 'Edit Contract' : 'Add New Contract'}
+            <h2 className="font-bold text-gray-800 mb-1">
+              {editingGroup ? 'Edit Contract' : 'Add New Contract'}
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <p className="text-sm text-gray-500 mb-4">
+              Select all vendors awarded this contract — they will all appear under one contract card on the platform.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                  Vendor *
-                </label>
-                <select
-                  value={form.vendor_id}
-                  onChange={e => setForm({ ...form, vendor_id: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                >
-                  <option value="">Select vendor...</option>
-                  {vendors.map(v => (
-                    <option key={v.id} value={v.id}>{v.company_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                  Cooperative *
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Cooperative *</label>
                 <select
                   value={form.cooperative_id}
                   onChange={e => setForm({ ...form, cooperative_id: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
                   <option value="">Select co-op...</option>
-                  {coops.map(c => (
-                    <option key={c.id} value={c.id}>{c.abbreviation} — {c.name}</option>
-                  ))}
+                  {coops.map(c => <option key={c.id} value={c.id}>{c.abbreviation} — {c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                  Contract Name *
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Contract Number</label>
+                <input
+                  type="text"
+                  value={form.contract_number}
+                  onChange={e => setForm({ ...form, contract_number: e.target.value })}
+                  placeholder="e.g. ESCNJ 23/24-23"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Contract Name *</label>
                 <input
                   type="text"
                   value={form.contract_name}
@@ -227,21 +305,7 @@ export default function AdminContracts() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                  Contract Number
-                </label>
-                <input
-                  type="text"
-                  value={form.contract_number}
-                  onChange={e => setForm({ ...form, contract_number: e.target.value })}
-                  placeholder="e.g. ESCNJ 23/24-23"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                  Trade Category *
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Trade Category *</label>
                 <select
                   value={form.trade_category}
                   onChange={e => setForm({ ...form, trade_category: e.target.value })}
@@ -252,9 +316,7 @@ export default function AdminContracts() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                  Status
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Status</label>
                 <select
                   value={form.status}
                   onChange={e => setForm({ ...form, status: e.target.value })}
@@ -267,9 +329,7 @@ export default function AdminContracts() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                  Expiration Date *
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Expiration Date *</label>
                 <input
                   type="date"
                   value={form.expiration_date}
@@ -278,9 +338,7 @@ export default function AdminContracts() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                  Notes
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Notes</label>
                 <input
                   type="text"
                   value={form.notes}
@@ -290,17 +348,58 @@ export default function AdminContracts() {
                 />
               </div>
             </div>
-            <div className="flex gap-3 mt-5">
+
+            {/* Vendor multi-select */}
+            <div className="mb-4">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
+                Awarded Vendors * <span className="text-gray-400 font-normal normal-case">({selectedVendorIds.length} selected)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Search vendors..."
+                value={vendorSearch}
+                onChange={e => setVendorSearch(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                {filteredVendors.map((v, i) => {
+                  const isChecked = selectedVendorIds.includes(v.id)
+                  return (
+                    <label
+                      key={v.id}
+                      className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${isChecked ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-amber-50 border-b border-gray-100 last:border-0`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleVendor(v.id)}
+                        className="w-4 h-4 accent-amber-600"
+                      />
+                      <span className={`text-sm ${isChecked ? 'font-semibold text-amber-800' : 'text-gray-700'}`}>
+                        {v.company_name}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+              {selectedVendorIds.length > 0 && (
+                <div className="mt-2 text-xs text-amber-700 font-medium">
+                  Selected: {vendors.filter(v => selectedVendorIds.includes(v.id)).map(v => v.company_name).join(', ')}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
               <button
                 onClick={save}
                 disabled={saving}
-                className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
+                className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-lg"
               >
-                {saving ? 'Saving...' : editingContract ? 'Save Changes' : 'Add Contract'}
+                {saving ? 'Saving...' : editingGroup ? `Save Changes (${selectedVendorIds.length} vendors)` : `Add Contract (${selectedVendorIds.length} vendors)`}
               </button>
               <button
                 onClick={() => { setShowForm(false); setMessage('') }}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-5 py-2.5 rounded-lg"
               >
                 Cancel
               </button>
@@ -320,7 +419,7 @@ export default function AdminContracts() {
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
           >
             <option value="all">All statuses</option>
             <option value="active">Active</option>
@@ -330,7 +429,7 @@ export default function AdminContracts() {
           <select
             value={filterTrade}
             onChange={e => setFilterTrade(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
           >
             <option value="all">All trades</option>
             {TRADES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -339,7 +438,6 @@ export default function AdminContracts() {
 
         <div className="text-sm text-gray-500 mb-3">{filtered.length} contracts</div>
 
-        {/* Contracts table */}
         {loading ? (
           <div className="text-center py-12 text-gray-400">Loading...</div>
         ) : (
@@ -348,7 +446,7 @@ export default function AdminContracts() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Contract</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Vendor</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Vendors</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Co-op</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Trade</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Expires</th>
@@ -357,50 +455,62 @@ export default function AdminContracts() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c, i) => {
-                  const days = daysUntil(c.expiration_date)
-                  const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                {filtered.map((g, i) => {
+                  const days = daysUntil(g.expiration_date)
+                  const exp = new Date(g.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   return (
-                    <tr key={c.id} className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
+                    <tr key={`${g.contract_number}-${g.cooperative_id}`} className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-gray-800">{c.contract_name}</div>
-                        <div className="text-xs text-gray-400 font-mono">{c.contract_number}</div>
+                        <div className="font-medium text-gray-800">{g.contract_name}</div>
+                        <div className="text-xs text-gray-400 font-mono">{g.contract_number}</div>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{c.vendors?.company_name}</td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-gray-600">
+                          {g.vendorNames.length === 0 ? (
+                            <span className="text-gray-300">Pending</span>
+                          ) : (
+                            <span>{g.vendorNames.join(' · ')}</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-0.5">{g.vendorNames.length} vendor{g.vendorNames.length !== 1 ? 's' : ''}</div>
+                      </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                          {c.cooperatives?.abbreviation}
+                          {g.coopAbbr}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{c.trade_category}</td>
+                      <td className="px-4 py-3 text-gray-600">{g.trade_category}</td>
                       <td className="px-4 py-3">
                         <div className="text-gray-600">{exp}</div>
-                        {days < 90 && days > 0 && (
-                          <div className="text-xs text-amber-600 font-medium">{days} days left</div>
-                        )}
-                        {days <= 0 && (
-                          <div className="text-xs text-red-600 font-medium">Expired</div>
-                        )}
+                        {days < 90 && days > 0 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
+                        {days <= 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                          c.status === 'active' ? 'bg-green-100 text-green-700' :
-                          c.status === 'extended' ? 'bg-amber-100 text-amber-700' :
+                          g.status === 'active' ? 'bg-green-100 text-green-700' :
+                          g.status === 'extended' ? 'bg-amber-100 text-amber-700' :
                           'bg-gray-100 text-gray-500'
                         }`}>
-                          {c.status}
+                          {g.status}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex gap-2 justify-end flex-wrap">
                           <button
-                            onClick={() => openEdit(c)}
+                            onClick={() => openEdit(g)}
                             className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                           >
                             Edit
                           </button>
                           <button
-                            onClick={() => deleteContract(c.id, c.contract_name)}
+                            onClick={() => extendOneYear(g)}
+                            className="text-xs text-green-600 hover:text-green-800 font-medium"
+                            title="Extend expiration by 1 year"
+                          >
+                            +1yr
+                          </button>
+                          <button
+                            onClick={() => deleteGroup(g)}
                             className="text-xs text-red-500 hover:text-red-700 font-medium"
                           >
                             Delete
