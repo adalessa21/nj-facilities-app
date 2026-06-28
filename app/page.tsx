@@ -25,6 +25,7 @@ interface Vendor {
   email: string
   website: string
   listing_tier: string
+  cert_url?: string
 }
 
 interface Contract {
@@ -136,6 +137,11 @@ function VendorPanel({
             {vendor.website && (
               <a href={`https://${vendor.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-gray-50 px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100">
                 🌐 {vendor.website}
+              </a>
+            )}
+            {(vendor as any).cert_url && (
+              <a href={(vendor as any).cert_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-gray-50 px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100">
+                📋 View documents
               </a>
             )}
           </div>
