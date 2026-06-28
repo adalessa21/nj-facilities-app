@@ -51,6 +51,7 @@ interface GroupedContract {
   expiration_date: string
   notes: string
   cooperative_id: string
+  source_url?: string
   vendorList: Vendor[]
   coop: Cooperative
 }
@@ -294,6 +295,7 @@ export default function Home() {
             expiration_date: row.expiration_date,
             notes: row.notes,
             cooperative_id: row.cooperative_id,
+            source_url: (row as any).source_url || '',
             vendorList: [],
             coop,
           }
