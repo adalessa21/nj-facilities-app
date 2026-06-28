@@ -181,6 +181,7 @@ const emptyForm = {
       status: form.status,
       expiration_date: form.expiration_date,
       notes: form.notes,
+      source_url: form.source_url || null,
     }))
 
     const { error } = await supabase.from('contracts').insert(inserts)
