@@ -258,7 +258,7 @@ export default function Home() {
       .from('contracts')
       .select(`
         id, contract_name, contract_number, trade_category,
-        status, expiration_date, notes, cooperative_id,
+        status, expiration_date, notes, cooperative_id, source_url,
         vendors ( id, company_name, phone, email, website, listing_tier, cert_url ),
         cooperatives ( id, name, abbreviation, display_color )
       `)
