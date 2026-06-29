@@ -10,6 +10,7 @@ interface Stats {
   vendors: number
   contracts: number
   memberships: number
+  pendingInstitution: number
 }
 
 export default function AdminDashboard() {
@@ -19,6 +20,7 @@ export default function AdminDashboard() {
     vendors: 0,
     contracts: 0,
     memberships: 0,
+    pendingInstitution: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -30,12 +32,14 @@ export default function AdminDashboard() {
         { count: vendors },
         { count: contracts },
         { count: memberships },
+        { count: pendingInstitution },
       ] = await Promise.all([
         supabase.from('entities').select('*', { count: 'exact', head: true }),
         supabase.from('cooperatives').select('*', { count: 'exact', head: true }),
         supabase.from('vendors').select('*', { count: 'exact', head: true }),
         supabase.from('contracts').select('*', { count: 'exact', head: true }),
         supabase.from('memberships').select('*', { count: 'exact', head: true }),
+        supabase.from('institution_contracts').select('*', { count: 'exact', head: true }).eq('approved_by_admin', false),
       ])
       setStats({
         entities: entities || 0,
@@ -43,6 +47,7 @@ export default function AdminDashboard() {
         vendors: vendors || 0,
         contracts: contracts || 0,
         memberships: memberships || 0,
+        pendingInstitution: pendingInstitution || 0,
       })
       setLoading(false)
     }
@@ -99,6 +104,18 @@ export default function AdminDashboard() {
       color: 'bg-green-50 border-green-200',
       btnColor: 'bg-green-600 hover:bg-green-700',
       icon: '✓',
+    },
+    {
+      title: 'Institution Contracts',
+      description: stats.pendingInstitution > 0
+        ? `Review piggybacked on-call contracts — ${stats.pendingInstitution} pending approval`
+        : 'Review piggybacked on-call contracts submitted by NJ institutions',
+      href: '/admin/institution-contracts',
+      count: stats.pendingInstitution,
+      label: 'pending',
+      color: stats.pendingInstitution > 0 ? 'bg-orange-50 border-orange-300' : 'bg-orange-50 border-orange-200',
+      btnColor: 'bg-orange-600 hover:bg-orange-700',
+      icon: '📋',
     },
   ]
 
@@ -159,7 +176,7 @@ export default function AdminDashboard() {
                   <div className="font-bold text-gray-800 text-base">
                     {s.title}
                     <span className="ml-2 text-sm font-normal text-gray-500">
-                      ({loading ? '…' : stats[s.label.split(' ')[0].toLowerCase() as keyof Stats] ?? '…'} {s.label})
+                      ({loading ? '…' : s.count} {s.label})
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 mt-0.5">{s.description}</div>

@@ -54,6 +54,11 @@ interface GroupedContract {
   source_url?: string
   vendorList: Vendor[]
   coop: Cooperative
+  source?: 'cooperative' | 'institution'
+  institution_name?: string
+  piggyback_language?: string
+  authorized_users?: string
+  insurance_requirements?: string
 }
 
 interface Membership {
@@ -70,6 +75,7 @@ const COOP_STYLES: Record<string, { bg: string; text: string; border: string }> 
   'Hunterdon ESC': { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' },
   NASPO:           { bg: 'bg-green-100',  text: 'text-green-800',  border: 'border-green-300' },
   'NJ Edge':       { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-300' },
+  'Lead Agency':   { bg: 'bg-amber-100',  text: 'text-amber-800',  border: 'border-amber-300' },
 }
 
 function CoopBadge({ abbr }: { abbr: string }) {
@@ -273,13 +279,26 @@ export default function Home() {
       q = q.or(`contract_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%`)
     }
 
-    const { data, error } = await q
+    // Also query approved piggyback institution contracts
+    let iq = supabase
+      .from('institution_contracts')
+      .select('*')
+      .eq('approved_by_admin', true)
+      .eq('piggyback_allowed', true)
+      .gte('expiration_date', new Date().toISOString().split('T')[0])
+
+    if (selectedTrade) iq = iq.eq('trade_category', selectedTrade)
+    if (selectedCoop) iq = iq.eq('cooperative_id', selectedCoop)
+    if (query.trim()) {
+      iq = iq.or(`vendor_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%,institution_name.ilike.%${query}%`)
+    }
+
+    const [{ data, error }, { data: instData }] = await Promise.all([q, iq])
     if (error) console.error(error)
 
-    if (data) {
-      // Group by contract_number + cooperative_id so one card = one contract
-      const grouped: Record<string, GroupedContract> = {}
+    const grouped: Record<string, GroupedContract> = {}
 
+    if (data) {
       data.forEach((row: Contract) => {
         const key = `${row.contract_number}||${row.cooperative_id}`
         const coop = (Array.isArray(row.cooperatives) ? row.cooperatives[0] : row.cooperatives) as Cooperative
@@ -298,20 +317,56 @@ export default function Home() {
             source_url: (row as any).source_url || '',
             vendorList: [],
             coop,
+            source: 'cooperative',
           }
         }
 
-        // Add vendor if not already in the list
         if (vendor && !grouped[key].vendorList.find(v => v.id === vendor.id)) {
           grouped[key].vendorList.push(vendor)
         }
       })
-
-      const result = Object.values(grouped)
-      setGroupedContracts(result)
-      const uniqueTrades = [...new Set(result.map(c => c.trade_category))].sort()
-      setTrades(uniqueTrades)
     }
+
+    if (instData && !selectedCoop) {
+      instData.forEach((row: any) => {
+        const key = `inst-${row.id}`
+        grouped[key] = {
+          id: row.id,
+          contract_name: row.vendor_name + ' — On-Call ' + row.trade_category,
+          contract_number: row.contract_number || 'N/A',
+          trade_category: row.trade_category,
+          status: 'active',
+          expiration_date: row.expiration_date,
+          notes: row.notes || '',
+          cooperative_id: '',
+          vendorList: [{
+            id: `inst-vendor-${row.id}`,
+            company_name: row.vendor_name,
+            phone: '',
+            email: '',
+            website: '',
+            listing_tier: '',
+          }],
+          coop: {
+            id: `inst-coop-${row.id}`,
+            name: row.institution_name,
+            abbreviation: 'Lead Agency',
+            display_color: '#854F0B',
+          },
+          source: 'institution',
+          institution_name: row.institution_name,
+          piggyback_language: row.piggyback_language,
+          authorized_users: row.authorized_users,
+          insurance_requirements: row.insurance_requirements,
+        }
+      })
+    }
+
+    const result = Object.values(grouped)
+    result.sort((a, b) => new Date(a.expiration_date).getTime() - new Date(b.expiration_date).getTime())
+    setGroupedContracts(result)
+    const uniqueTrades = [...new Set(result.map(c => c.trade_category))].sort()
+    setTrades(uniqueTrades)
 
     setLoading(false)
   }, [selectedEntity, entityMemberships, selectedTrade, selectedCoop, query])
@@ -535,18 +590,33 @@ export default function Home() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-                      <span>✓</span>
-                      <span>{selectedEntity.name} eligible via {coopLabel} — competitively bid cooperative pricing</span>
-                      {!isPending && (
-                        <button
-                          onClick={() => setSelectedVendor(c.vendorList[0])}
-                          className="ml-auto text-teal-600 underline underline-offset-2 hover:text-teal-800 whitespace-nowrap"
-                        >
-                          View profiles →
-                        </button>
-                      )}
-                    </div>
+                    {c.source === 'institution' ? (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg">
+                        <span>✓</span>
+                        <span>{selectedEntity.name} can use this via {c.institution_name} — piggybacked on-call contract</span>
+                        {c.piggyback_language && (
+                          <button
+                            onClick={() => alert(c.piggyback_language)}
+                            className="ml-auto text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
+                          >
+                            View piggyback language →
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+                        <span>✓</span>
+                        <span>{selectedEntity.name} eligible via {coopLabel} — competitively bid cooperative pricing</span>
+                        {!isPending && (
+                          <button
+                            onClick={() => setSelectedVendor(c.vendorList[0])}
+                            className="ml-auto text-teal-600 underline underline-offset-2 hover:text-teal-800 whitespace-nowrap"
+                          >
+                            View profiles →
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })
