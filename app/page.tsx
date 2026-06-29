@@ -75,7 +75,7 @@ const COOP_STYLES: Record<string, { bg: string; text: string; border: string }> 
   'Hunterdon ESC': { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' },
   NASPO:           { bg: 'bg-green-100',  text: 'text-green-800',  border: 'border-green-300' },
   'NJ Edge':       { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-300' },
-  'Lead Agency':   { bg: 'bg-amber-100',  text: 'text-amber-800',  border: 'border-amber-300' },
+  'Shared Contract': { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
 }
 
 function CoopBadge({ abbr }: { abbr: string }) {
@@ -261,74 +261,79 @@ export default function Home() {
     if (!selectedEntity || entityMemberships.length === 0) return
     setLoading(true)
 
-    let q = supabase
-      .from('contracts')
-      .select(`
-        id, contract_name, contract_number, trade_category,
-        status, expiration_date, notes, cooperative_id, source_url,
-        vendors ( id, company_name, phone, email, website, listing_tier, cert_url ),
-        cooperatives ( id, name, abbreviation, display_color )
-      `)
-      .in('cooperative_id', entityMemberships)
-      .in('status', ['active', 'extended'])
-      .order('expiration_date', { ascending: true })
-
-    if (selectedTrade) q = q.eq('trade_category', selectedTrade)
-    if (selectedCoop) q = q.eq('cooperative_id', selectedCoop)
-    if (query.trim()) {
-      q = q.or(`contract_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%`)
-    }
-
-    // Also query approved piggyback institution contracts
-    let iq = supabase
-      .from('institution_contracts')
-      .select('*')
-      .eq('approved_by_admin', true)
-      .eq('piggyback_allowed', true)
-      .gte('expiration_date', new Date().toISOString().split('T')[0])
-
-    if (selectedTrade) iq = iq.eq('trade_category', selectedTrade)
-    if (selectedCoop) iq = iq.eq('cooperative_id', selectedCoop)
-    if (query.trim()) {
-      iq = iq.or(`vendor_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%,institution_name.ilike.%${query}%`)
-    }
-
-    const [{ data, error }, { data: instData }] = await Promise.all([q, iq])
-    if (error) console.error(error)
+    const isSharedFilter = selectedCoop === 'shared-contract'
+    const isCoopFilter = selectedCoop && !isSharedFilter
 
     const grouped: Record<string, GroupedContract> = {}
 
-    if (data) {
-      data.forEach((row: Contract) => {
-        const key = `${row.contract_number}||${row.cooperative_id}`
-        const coop = (Array.isArray(row.cooperatives) ? row.cooperatives[0] : row.cooperatives) as Cooperative
-        const vendor = (Array.isArray(row.vendors) ? row.vendors[0] : row.vendors) as Vendor
+    if (!isSharedFilter) {
+      let q = supabase
+        .from('contracts')
+        .select(`
+          id, contract_name, contract_number, trade_category,
+          status, expiration_date, notes, cooperative_id, source_url,
+          vendors ( id, company_name, phone, email, website, listing_tier, cert_url ),
+          cooperatives ( id, name, abbreviation, display_color )
+        `)
+        .in('cooperative_id', entityMemberships)
+        .in('status', ['active', 'extended'])
+        .order('expiration_date', { ascending: true })
 
-        if (!grouped[key]) {
-          grouped[key] = {
-            id: row.id,
-            contract_name: row.contract_name,
-            contract_number: row.contract_number,
-            trade_category: row.trade_category,
-            status: row.status,
-            expiration_date: row.expiration_date,
-            notes: row.notes,
-            cooperative_id: row.cooperative_id,
-            source_url: (row as any).source_url || '',
-            vendorList: [],
-            coop,
-            source: 'cooperative',
+      if (selectedTrade) q = q.eq('trade_category', selectedTrade)
+      if (isCoopFilter) q = q.eq('cooperative_id', selectedCoop)
+      if (query.trim()) {
+        q = q.or(`contract_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%`)
+      }
+
+      const { data, error } = await q
+      if (error) console.error(error)
+
+      if (data) {
+        data.forEach((row: Contract) => {
+          const key = `${row.contract_number}||${row.cooperative_id}`
+          const coop = (Array.isArray(row.cooperatives) ? row.cooperatives[0] : row.cooperatives) as Cooperative
+          const vendor = (Array.isArray(row.vendors) ? row.vendors[0] : row.vendors) as Vendor
+
+          if (!grouped[key]) {
+            grouped[key] = {
+              id: row.id,
+              contract_name: row.contract_name,
+              contract_number: row.contract_number,
+              trade_category: row.trade_category,
+              status: row.status,
+              expiration_date: row.expiration_date,
+              notes: row.notes,
+              cooperative_id: row.cooperative_id,
+              source_url: (row as any).source_url || '',
+              vendorList: [],
+              coop,
+              source: 'cooperative',
+            }
           }
-        }
 
-        if (vendor && !grouped[key].vendorList.find(v => v.id === vendor.id)) {
-          grouped[key].vendorList.push(vendor)
-        }
-      })
+          if (vendor && !grouped[key].vendorList.find(v => v.id === vendor.id)) {
+            grouped[key].vendorList.push(vendor)
+          }
+        })
+      }
     }
 
-    if (instData && !selectedCoop) {
-      instData.forEach((row: any) => {
+    if (!isCoopFilter) {
+      let iq = supabase
+        .from('institution_contracts')
+        .select('*')
+        .eq('approved_by_admin', true)
+        .eq('piggyback_allowed', true)
+        .gte('expiration_date', new Date().toISOString().split('T')[0])
+
+      if (selectedTrade) iq = iq.eq('trade_category', selectedTrade)
+      if (query.trim()) {
+        iq = iq.or(`vendor_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%,institution_name.ilike.%${query}%`)
+      }
+
+      const { data: instData } = await iq
+
+      instData?.forEach((row: any) => {
         const key = `inst-${row.id}`
         grouped[key] = {
           id: row.id,
@@ -350,7 +355,7 @@ export default function Home() {
           coop: {
             id: `inst-coop-${row.id}`,
             name: row.institution_name,
-            abbreviation: 'Lead Agency',
+            abbreviation: 'Shared Contract',
             display_color: '#854F0B',
           },
           source: 'institution',
@@ -518,6 +523,12 @@ export default function Home() {
                     </button>
                   )
                 })}
+                <button
+                  onClick={() => setSelectedCoop(selectedCoop === 'shared-contract' ? null : 'shared-contract')}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedCoop === 'shared-contract' ? 'bg-amber-50 border-amber-500 text-amber-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}
+                >
+                  Shared Contract
+                </button>
               </div>
             </div>
 
@@ -526,7 +537,7 @@ export default function Home() {
               <span className="text-sm text-gray-500">
                 {loading ? 'Searching...' : `${groupedContracts.length} contract${groupedContracts.length !== 1 ? 's' : ''} found`}
                 {selectedTrade && ` · ${selectedTrade}`}
-                {selectedCoop && ` · ${cooperatives.find(c => c.id === selectedCoop)?.abbreviation}`}
+                {selectedCoop && ` · ${selectedCoop === 'shared-contract' ? 'Shared Contract' : cooperatives.find(c => c.id === selectedCoop)?.abbreviation}`}
               </span>
               <span className="text-xs bg-teal-50 text-teal-700 px-2.5 py-1 rounded-lg font-semibold">
                 ✓ {selectedEntity.name}
