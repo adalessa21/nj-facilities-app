@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Entity {
@@ -519,6 +520,9 @@ export default function Home() {
           <p className="text-white/60 text-sm mt-1">
             ESCNJ · NJ State Contract · Sourcewell · OMNIA · Bergen Co-op · Hunterdon ESC · NASPO · NJ Edge
           </p>
+          <Link href="/piggyback" className="text-xs text-white/50 hover:text-white/80 underline underline-offset-2 mt-2 inline-block">
+            Submit a Shared Contract for Approval →
+          </Link>
         </div>
       </header>
 
