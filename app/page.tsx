@@ -650,30 +650,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Quick link to the institution's own shared contracts */}
-            {selectedCoop === null && myContracts.length > 0 && (
-              <div
-                className="flex items-center justify-between gap-3 rounded-xl p-4 mb-4"
-                style={{ backgroundColor: '#FAEEDA', border: '0.5px solid #EF9F27' }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">⭐</span>
-                  <div>
-                    <div className="text-sm font-bold text-gray-800">
-                      {selectedEntity.name} has {myContracts.length} shared contract{myContracts.length !== 1 ? 's' : ''}
-                    </div>
-                    <div className="text-xs text-gray-600">Other NJ institutions can piggyback on these</div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => { setSelectedCoop('shared-contract'); setSelectedTrade(null) }}
-                  className="text-sm font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap shrink-0"
-                >
-                  Filter to yours →
-                </button>
-              </div>
-            )}
-
             {/* Results header */}
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm text-gray-500">
