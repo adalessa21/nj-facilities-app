@@ -389,6 +389,124 @@ export default function Home() {
   const vendorSet = new Set(groupedContracts.flatMap(c => c.vendorList.map(v => v.id)))
   const coopSet = new Set(groupedContracts.map(c => c.cooperative_id))
 
+  // Split out contracts where the selected institution is the lead agency (vs. piggybacking on someone else's)
+  function isLeadContract(c: GroupedContract) {
+    return c.coop?.abbreviation === 'Shared Contract' && c.coop?.name === selectedEntity?.name
+  }
+  const myContracts = groupedContracts.filter(isLeadContract)
+  const otherContracts = groupedContracts.filter(c => !isLeadContract(c))
+
+  function renderCard(c: GroupedContract) {
+    const days = daysUntil(c.expiration_date)
+    const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const isPending = c.vendorList.length === 0 || c.vendorList[0]?.company_name?.startsWith('[')
+    const coopAbbr = c.coop?.abbreviation || ''
+    const coopLabel = coopAbbr === 'NJ State' ? 'NJ State Contract' : coopAbbr
+    const isLead = isLeadContract(c)
+
+    return (
+      <div
+        key={`${c.contract_number}-${c.cooperative_id}`}
+        className={`rounded-xl p-4 mb-2 transition-colors ${isLead ? '' : 'bg-white border border-gray-200 hover:border-teal-400'}`}
+        style={isLead ? { backgroundColor: '#FAEEDA', border: '0.5px solid #EF9F27' } : undefined}
+      >
+        <div className="flex justify-between items-start gap-2 mb-1.5">
+          <div>
+            <div className="font-bold text-sm text-gray-800">{c.contract_name}</div>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{c.trade_category}</span>
+              {c.source === 'institution' ? (
+                isLead ? (
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                    style={{ backgroundColor: '#FAEEDA', color: '#854F0B', border: '0.5px solid #EF9F27' }}
+                  >
+                    ⭐ Your contract
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-amber-100 text-amber-800 border-amber-300">
+                    Shared via {c.coop?.name}
+                  </span>
+                )
+              ) : (
+                <CoopBadge abbr={coopAbbr} />
+              )}
+            </div>
+          </div>
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+            {c.status === 'active' ? 'Active' : 'Extended'}
+          </span>
+        </div>
+
+        <div className="flex gap-4 text-xs text-gray-400 mb-2">
+          <span>📄 {c.contract_number}</span>
+          <span>
+            📅 Expires {exp}
+            {days < 180 && days > 0 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
+            {days <= 0 && <span className="text-red-600 font-medium"> · EXPIRED</span>}
+          </span>
+        </div>
+
+        {c.notes && <div className="text-xs text-gray-400 mb-2">{c.notes}</div>}
+        {!!(c as any).source_url && <div className="mb-2"><a href={(c as any).source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2">📋 View source document →</a></div>}
+
+        <div className="text-xs text-gray-500 mb-2">
+          <span className="font-semibold text-gray-700">Vendors: </span>
+          {isPending ? (
+            <span className="text-gray-300">Verification in progress</span>
+          ) : (
+            c.vendorList.map((v, i) => (
+              <span key={v.id}>
+                <button
+                  onClick={() => setSelectedVendor(v)}
+                  className="text-teal-600 underline underline-offset-2 hover:text-teal-800"
+                >
+                  {v.company_name}
+                </button>
+                {i < c.vendorList.length - 1 && <span className="text-gray-300 mx-1">·</span>}
+              </span>
+            ))
+          )}
+        </div>
+
+        {c.source === 'institution' ? (
+          isLead ? (
+            <div className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#FAC775', color: '#633806' }}>
+              <span>⭐</span>
+              <span>This is {c.institution_name}'s contract — other institutions can piggyback on it</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg">
+              <span>✓</span>
+              <span>{selectedEntity?.name} can use this via {c.institution_name} — piggybacked on-call contract</span>
+              {c.piggyback_language && (
+                <button
+                  onClick={() => alert(c.piggyback_language)}
+                  className="ml-auto text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
+                >
+                  View piggyback language →
+                </button>
+              )}
+            </div>
+          )
+        ) : (
+          <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+            <span>✓</span>
+            <span>{selectedEntity?.name} eligible via {coopLabel} — competitively bid cooperative pricing</span>
+            {!isPending && (
+              <button
+                onClick={() => setSelectedVendor(c.vendorList[0])}
+                className="ml-auto text-teal-600 underline underline-offset-2 hover:text-teal-800 whitespace-nowrap"
+              >
+                View profiles →
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -532,6 +650,30 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Quick link to the institution's own shared contracts */}
+            {selectedCoop === null && myContracts.length > 0 && (
+              <div
+                className="flex items-center justify-between gap-3 rounded-xl p-4 mb-4"
+                style={{ backgroundColor: '#FAEEDA', border: '0.5px solid #EF9F27' }}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">⭐</span>
+                  <div>
+                    <div className="text-sm font-bold text-gray-800">
+                      {selectedEntity.name} has {myContracts.length} shared contract{myContracts.length !== 1 ? 's' : ''}
+                    </div>
+                    <div className="text-xs text-gray-600">Other NJ institutions can piggyback on these</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setSelectedCoop('shared-contract'); setSelectedTrade(null) }}
+                  className="text-sm font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap shrink-0"
+                >
+                  Filter to yours →
+                </button>
+              </div>
+            )}
+
             {/* Results header */}
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm text-gray-500">
@@ -548,89 +690,25 @@ export default function Home() {
             {groupedContracts.length === 0 && !loading ? (
               <div className="text-center py-12 text-gray-400">No contracts match. Try adjusting the filters.</div>
             ) : (
-              groupedContracts.map(c => {
-                const days = daysUntil(c.expiration_date)
-                const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                const isPending = c.vendorList.length === 0 || c.vendorList[0]?.company_name?.startsWith('[')
-                const coopAbbr = c.coop?.abbreviation || ''
-                const coopLabel = coopAbbr === 'NJ State' ? 'NJ State Contract' : coopAbbr
-
-                return (
-                  <div key={`${c.contract_number}-${c.cooperative_id}`} className="bg-white border border-gray-200 rounded-xl p-4 mb-2 hover:border-teal-400 transition-colors">
-                    <div className="flex justify-between items-start gap-2 mb-1.5">
-                      <div>
-                        <div className="font-bold text-sm text-gray-800">{c.contract_name}</div>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{c.trade_category}</span>
-                          <CoopBadge abbr={coopAbbr} />
-                        </div>
-                      </div>
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {c.status === 'active' ? 'Active' : 'Extended'}
-                      </span>
-                    </div>
-
-                    <div className="flex gap-4 text-xs text-gray-400 mb-2">
-                      <span>📄 {c.contract_number}</span>
-                      <span>
-                        📅 Expires {exp}
-                        {days < 180 && days > 0 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
-                        {days <= 0 && <span className="text-red-600 font-medium"> · EXPIRED</span>}
-                      </span>
-                    </div>
-
-                    {c.notes && <div className="text-xs text-gray-400 mb-2">{c.notes}</div>}
-                    {!!(c as any).source_url && <div className="mb-2"><a href={(c as any).source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2">📋 View source document →</a></div>}
-
-                    <div className="text-xs text-gray-500 mb-2">
-                      <span className="font-semibold text-gray-700">Vendors: </span>
-                      {isPending ? (
-                        <span className="text-gray-300">Verification in progress</span>
-                      ) : (
-                        c.vendorList.map((v, i) => (
-                          <span key={v.id}>
-                            <button
-                              onClick={() => setSelectedVendor(v)}
-                              className="text-teal-600 underline underline-offset-2 hover:text-teal-800"
-                            >
-                              {v.company_name}
-                            </button>
-                            {i < c.vendorList.length - 1 && <span className="text-gray-300 mx-1">·</span>}
-                          </span>
-                        ))
-                      )}
-                    </div>
-
-                    {c.source === 'institution' ? (
-                      <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg">
-                        <span>✓</span>
-                        <span>{selectedEntity.name} can use this via {c.institution_name} — piggybacked on-call contract</span>
-                        {c.piggyback_language && (
-                          <button
-                            onClick={() => alert(c.piggyback_language)}
-                            className="ml-auto text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
-                          >
-                            View piggyback language →
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-                        <span>✓</span>
-                        <span>{selectedEntity.name} eligible via {coopLabel} — competitively bid cooperative pricing</span>
-                        {!isPending && (
-                          <button
-                            onClick={() => setSelectedVendor(c.vendorList[0])}
-                            className="ml-auto text-teal-600 underline underline-offset-2 hover:text-teal-800 whitespace-nowrap"
-                          >
-                            View profiles →
-                          </button>
-                        )}
-                      </div>
-                    )}
+              <>
+                {myContracts.length > 0 && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: '#854F0B' }}>
+                      {selectedEntity.name}'s contracts
+                    </span>
+                    <div className="flex-1 h-px" style={{ backgroundColor: '#EF9F27' }} />
                   </div>
-                )
-              })
+                )}
+                {myContracts.map(c => renderCard(c))}
+
+                {myContracts.length > 0 && (
+                  <div className="flex items-center gap-2 mt-4 mb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">Co-op contracts</span>
+                    <div className="flex-1 h-px bg-gray-200" />
+                  </div>
+                )}
+                {otherContracts.map(c => renderCard(c))}
+              </>
             )}
           </>
         )}
