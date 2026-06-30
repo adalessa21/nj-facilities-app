@@ -4,6 +4,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
+const TRADES = [
+  'HVAC','Electrical','Plumbing','Roofing','General Construction',
+  'Fire Alarm','Fire Protection','Generator','Elevator','Lighting',
+  'Flooring','Grounds','Painting','Fencing','Pest Control',
+  'MRO Supplies','Security','Janitorial Supplies','Waste & Recycling',
+  'Equipment Rental','Furniture','Paving',
+]
+
 interface InstitutionContract {
   id: string
   institution_name: string
@@ -23,12 +31,43 @@ interface InstitutionContract {
   created_at: string
 }
 
+interface EditForm {
+  institution_name: string
+  vendor_name: string
+  trade_category: string
+  contract_number: string
+  start_date: string
+  expiration_date: string
+  piggyback_allowed: boolean
+  authorized_users: string
+  piggyback_language: string
+  insurance_requirements: string
+  notes: string
+}
+
+const emptyEdit: EditForm = {
+  institution_name: '',
+  vendor_name: '',
+  trade_category: '',
+  contract_number: '',
+  start_date: '',
+  expiration_date: '',
+  piggyback_allowed: true,
+  authorized_users: '',
+  piggyback_language: '',
+  insurance_requirements: '',
+  notes: '',
+}
+
 export default function AdminInstitutionContracts() {
   const [contracts, setContracts] = useState<InstitutionContract[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved'>('all')
   const [message, setMessage] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<EditForm>(emptyEdit)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
@@ -60,6 +99,62 @@ export default function AdminInstitutionContracts() {
       .eq('id', id)
     if (error) { setMessage('Error: ' + error.message); return }
     setMessage('✓ Contract rejected and removed.')
+    if (editingId === id) setEditingId(null)
+    if (expandedId === id) setExpandedId(null)
+    loadData()
+  }
+
+  function openEdit(c: InstitutionContract) {
+    setEditForm({
+      institution_name: c.institution_name,
+      vendor_name: c.vendor_name,
+      trade_category: c.trade_category,
+      contract_number: c.contract_number || '',
+      start_date: c.start_date ? c.start_date.split('T')[0] : '',
+      expiration_date: c.expiration_date ? c.expiration_date.split('T')[0] : '',
+      piggyback_allowed: c.piggyback_allowed,
+      authorized_users: c.authorized_users || '',
+      piggyback_language: c.piggyback_language || '',
+      insurance_requirements: c.insurance_requirements || '',
+      notes: c.notes || '',
+    })
+    setEditingId(c.id)
+    setExpandedId(null)
+    setMessage('')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditForm(emptyEdit)
+  }
+
+  async function saveEdit() {
+    if (!editForm.institution_name || !editForm.vendor_name || !editForm.expiration_date) {
+      setMessage('Institution name, vendor name, and expiration date are required.')
+      return
+    }
+    setSaving(true)
+    const { error } = await supabase
+      .from('institution_contracts')
+      .update({
+        institution_name: editForm.institution_name,
+        vendor_name: editForm.vendor_name,
+        trade_category: editForm.trade_category,
+        contract_number: editForm.contract_number || null,
+        start_date: editForm.start_date || null,
+        expiration_date: editForm.expiration_date,
+        piggyback_allowed: editForm.piggyback_allowed,
+        authorized_users: editForm.authorized_users || null,
+        piggyback_language: editForm.piggyback_language || null,
+        insurance_requirements: editForm.insurance_requirements || null,
+        notes: editForm.notes || null,
+      })
+      .eq('id', editingId!)
+    setSaving(false)
+    if (error) { setMessage('Error: ' + error.message); return }
+    setMessage('✓ Contract updated successfully.')
+    setEditingId(null)
+    setEditForm(emptyEdit)
     loadData()
   }
 
@@ -74,6 +169,9 @@ export default function AdminInstitutionContracts() {
   function daysUntil(d: string) {
     return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)
   }
+
+  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400'
+  const labelCls = 'text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -138,12 +236,16 @@ export default function AdminInstitutionContracts() {
                   const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   const start = c.start_date ? new Date(c.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
                   const isExpanded = expandedId === c.id
+                  const isEditing = editingId === c.id
 
                   return (
                     <tr
                       key={c.id}
-                      className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${!c.approved_by_admin ? 'border-l-4 border-l-amber-400' : ''}`}
-                      onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                      className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${!c.approved_by_admin ? 'border-l-4 border-l-amber-400' : ''} ${isEditing ? 'bg-amber-50/40' : ''}`}
+                      onClick={() => {
+                        if (editingId === c.id) return
+                        setExpandedId(isExpanded ? null : c.id)
+                      }}
                     >
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-800">{c.institution_name}</div>
@@ -181,6 +283,12 @@ export default function AdminInstitutionContracts() {
                             </button>
                           )}
                           <button
+                            onClick={() => openEdit(c)}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            Edit
+                          </button>
+                          <button
                             onClick={() => reject(c.id, c.vendor_name)}
                             className="text-xs text-red-500 hover:text-red-700 font-medium"
                           >
@@ -196,14 +304,168 @@ export default function AdminInstitutionContracts() {
           </div>
         )}
 
-        {expandedId && (() => {
+        {/* Edit form */}
+        {editingId && (() => {
+          const c = contracts.find(x => x.id === editingId)
+          if (!c) return null
+          return (
+            <div className="mt-4 bg-white border border-amber-200 rounded-xl p-5">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="font-bold text-gray-800">Edit Contract</h3>
+                <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600 text-sm border border-gray-200 rounded px-2 py-0.5">✕ Cancel</button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className={labelCls}>Institution Name</label>
+                  <input
+                    type="text"
+                    value={editForm.institution_name}
+                    onChange={e => setEditForm(f => ({ ...f, institution_name: e.target.value }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Vendor Name</label>
+                  <input
+                    type="text"
+                    value={editForm.vendor_name}
+                    onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Trade Category</label>
+                  <select
+                    value={editForm.trade_category}
+                    onChange={e => setEditForm(f => ({ ...f, trade_category: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="">Select trade...</option>
+                    {TRADES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Bid / Contract Number</label>
+                  <input
+                    type="text"
+                    value={editForm.contract_number}
+                    onChange={e => setEditForm(f => ({ ...f, contract_number: e.target.value }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Contract Start Date</label>
+                  <input
+                    type="date"
+                    value={editForm.start_date}
+                    onChange={e => setEditForm(f => ({ ...f, start_date: e.target.value }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Contract Expiration Date</label>
+                  <input
+                    type="date"
+                    value={editForm.expiration_date}
+                    onChange={e => setEditForm(f => ({ ...f, expiration_date: e.target.value }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Piggyback Allowed</label>
+                  <div className="flex items-center gap-3 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(f => ({ ...f, piggyback_allowed: true }))}
+                      className={`text-sm px-4 py-2 rounded-lg border font-medium transition-colors ${editForm.piggyback_allowed ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(f => ({ ...f, piggyback_allowed: false }))}
+                      className={`text-sm px-4 py-2 rounded-lg border font-medium transition-colors ${!editForm.piggyback_allowed ? 'bg-red-50 border-red-400 text-red-700' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Authorized Users</label>
+                  <input
+                    type="text"
+                    value={editForm.authorized_users}
+                    onChange={e => setEditForm(f => ({ ...f, authorized_users: e.target.value }))}
+                    placeholder="Any NJ public entity"
+                    className={inputCls}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className={labelCls}>Piggyback Language</label>
+                  <textarea
+                    value={editForm.piggyback_language}
+                    onChange={e => setEditForm(f => ({ ...f, piggyback_language: e.target.value }))}
+                    rows={3}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Insurance Requirements</label>
+                  <input
+                    type="text"
+                    value={editForm.insurance_requirements}
+                    onChange={e => setEditForm(f => ({ ...f, insurance_requirements: e.target.value }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Notes</label>
+                  <textarea
+                    value={editForm.notes}
+                    onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                    rows={2}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={saveEdit}
+                  disabled={saving}
+                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-lg"
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-5 py-2.5 rounded-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* Read-only detail view */}
+        {expandedId && !editingId && (() => {
           const c = contracts.find(x => x.id === expandedId)
           if (!c) return null
           return (
             <div className="mt-4 bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex justify-between items-start mb-3">
                 <h3 className="font-bold text-gray-800">{c.vendor_name} — {c.institution_name}</h3>
-                <button onClick={() => setExpandedId(null)} className="text-gray-400 hover:text-gray-600 text-sm border border-gray-200 rounded px-2 py-0.5">✕ Close</button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openEdit(c)}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium border border-blue-200 rounded px-2 py-0.5"
+                  >
+                    Edit
+                  </button>
+                  <button onClick={() => setExpandedId(null)} className="text-gray-400 hover:text-gray-600 text-sm border border-gray-200 rounded px-2 py-0.5">✕ Close</button>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
