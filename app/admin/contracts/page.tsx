@@ -22,11 +22,11 @@ interface Vendor { id: string; company_name: string }
 interface Coop { id: string; name: string; abbreviation: string }
 
 const TRADES = [
-  'HVAC','Electrical','Plumbing','Roofing','General Construction',
-  'Fire Alarm','Fire Protection','Generator','Elevator','Lighting',
-  'Flooring','Grounds','Painting','Fencing','Pest Control',
-  'MRO Supplies','Security','Janitorial Supplies','Waste & Recycling',
-  'Equipment Rental','Furniture','Paving'
+  'Automotive Parts','Electrical','Elevator','Equipment Rental','Fencing',
+  'Fire Alarm','Fire Protection','Fleet Maintenance','Fleet Vehicles','Flooring',
+  'Furniture','General Construction','Generator','Grounds','HVAC',
+  'Janitorial Supplies','Lighting','MRO Supplies','Painting','Paving',
+  'Pest Control','Plumbing','Roofing','Security','Waste & Recycling',
 ]
 
 // Group contracts by contract_number + cooperative_id for display
