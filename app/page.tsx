@@ -98,21 +98,33 @@ function VendorPanel({
   vendor,
   contracts,
   entityMemberships,
+  entityName,
   onClose,
 }: {
   vendor: Vendor
   contracts: GroupedContract[]
   entityMemberships: string[]
+  entityName?: string
   onClose: () => void
 }) {
   // Find all contracts this vendor appears in
   const allVendorContracts = contracts.filter(c =>
     c.vendorList.some(v => v.id === vendor.id)
   )
-  const eligible = allVendorContracts.filter(c => entityMemberships.includes(c.cooperative_id))
-  const ineligible = allVendorContracts.filter(c => !entityMemberships.includes(c.cooperative_id))
+  // Eligible: real co-op contracts the institution is a member of,
+  // plus shared contracts where this institution is the lead agency
+  const eligible = allVendorContracts.filter(c => {
+    if (c.coop?.abbreviation === 'Shared Contract') return c.coop?.name === entityName
+    return entityMemberships.includes(c.cooperative_id)
+  })
+  // Ineligible: only real co-op contracts the institution can't access (shared contracts excluded)
+  const ineligible = allVendorContracts.filter(c => {
+    if (c.coop?.abbreviation === 'Shared Contract') return false
+    return !entityMemberships.includes(c.cooperative_id)
+  })
   const trades = [...new Set(allVendorContracts.map(c => c.trade_category))]
   const hasRealCoopContract = allVendorContracts.some(c => c.coop?.abbreviation !== 'Shared Contract')
+  const coopEligibleCount = eligible.filter(c => c.coop?.abbreviation !== 'Shared Contract').length
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -129,7 +141,7 @@ function VendorPanel({
           {hasRealCoopContract && (
             <div className="flex items-center gap-2 bg-green-50 text-green-800 text-sm px-3 py-2 rounded-lg mb-4">
               <span>✓</span>
-              <span>Available via <strong>{eligible.length}</strong> cooperative contract{eligible.length !== 1 ? 's' : ''}</span>
+              <span>Available via <strong>{coopEligibleCount}</strong> cooperative contract{coopEligibleCount !== 1 ? 's' : ''}</span>
             </div>
           )}
 
@@ -163,12 +175,19 @@ function VendorPanel({
               {eligible.map(c => {
                 const days = daysUntil(c.expiration_date)
                 const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                const isShared = c.coop?.abbreviation === 'Shared Contract'
                 return (
                   <div key={c.id} className="flex items-start justify-between mb-3 pb-3 border-b border-gray-100 last:border-0">
                     <div>
                       <div className="text-sm font-semibold text-gray-800">{c.contract_name}</div>
                       <div className="flex items-center gap-2 mt-1">
-                        <CoopBadge abbr={c.coop.abbreviation} />
+                        {isShared ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300">
+                            ⭐ Your shared contract
+                          </span>
+                        ) : (
+                          <CoopBadge abbr={c.coop.abbreviation} />
+                        )}
                         <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{c.contract_number}</span>
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
@@ -703,6 +722,7 @@ export default function Home() {
           vendor={selectedVendor}
           contracts={groupedContracts}
           entityMemberships={entityMemberships}
+          entityName={selectedEntity?.name}
           onClose={() => setSelectedVendor(null)}
         />
       )}
