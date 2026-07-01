@@ -22,7 +22,7 @@ interface Vendor { id: string; company_name: string }
 interface Coop { id: string; name: string; abbreviation: string }
 
 const TRADES = [
-  'Automotive Parts','Electrical','Elevator','Equipment Rental','Fencing',
+  'Automotive Parts','Doors & Hardware','Electrical','Elevator','Equipment Rental','Fencing',
   'Fire Alarm','Fire Protection','Fleet Maintenance','Fleet Vehicles','Flooring',
   'Furniture','General Construction','Generator','Grounds','HVAC',
   'Janitorial Supplies','Lighting','MRO Supplies','Painting','Paving',

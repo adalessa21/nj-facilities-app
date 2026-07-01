@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 const TRADES = [
-  'Automotive Parts','Electrical','Elevator','Equipment Rental','Fencing',
+  'Automotive Parts','Doors & Hardware','Electrical','Elevator','Equipment Rental','Fencing',
   'Fire Alarm','Fire Protection','Fleet Maintenance','Fleet Vehicles','Flooring',
   'Furniture','General Construction','Generator','Grounds','HVAC',
   'Janitorial Supplies','Lighting','MRO Supplies','Painting','Paving',
