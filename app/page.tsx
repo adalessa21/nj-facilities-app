@@ -112,6 +112,7 @@ function VendorPanel({
   const eligible = allVendorContracts.filter(c => entityMemberships.includes(c.cooperative_id))
   const ineligible = allVendorContracts.filter(c => !entityMemberships.includes(c.cooperative_id))
   const trades = [...new Set(allVendorContracts.map(c => c.trade_category))]
+  const hasRealCoopContract = allVendorContracts.some(c => c.coop?.abbreviation !== 'Shared Contract')
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -125,10 +126,12 @@ function VendorPanel({
         </div>
 
         <div className="px-5 py-4">
-          <div className="flex items-center gap-2 bg-green-50 text-green-800 text-sm px-3 py-2 rounded-lg mb-4">
-            <span>✓</span>
-            <span>Available via <strong>{eligible.length}</strong> cooperative contract{eligible.length !== 1 ? 's' : ''}</span>
-          </div>
+          {hasRealCoopContract && (
+            <div className="flex items-center gap-2 bg-green-50 text-green-800 text-sm px-3 py-2 rounded-lg mb-4">
+              <span>✓</span>
+              <span>Available via <strong>{eligible.length}</strong> cooperative contract{eligible.length !== 1 ? 's' : ''}</span>
+            </div>
+          )}
 
           {/* Contact info */}
           <div className="flex flex-wrap gap-2 mb-4">
