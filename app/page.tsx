@@ -433,8 +433,12 @@ export default function Home() {
     const result = Object.values(grouped)
     result.sort((a, b) => new Date(a.expiration_date).getTime() - new Date(b.expiration_date).getTime())
     setGroupedContracts(result)
-    const uniqueTrades = [...new Set(result.map(c => c.trade_category))].sort()
-    setTrades(uniqueTrades)
+    // Only refresh the chip list when no trade filter is active — prevents the list
+    // collapsing to just selected trades when filters narrow the result set
+    if (selectedTrades.length === 0) {
+      const uniqueTrades = [...new Set(result.map(c => c.trade_category))].sort()
+      setTrades(uniqueTrades)
+    }
     setLoading(false)
   }, [selectedEntity, entityMemberships, selectedTrades, selectedCoops, query])
 
