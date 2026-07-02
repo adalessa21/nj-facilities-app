@@ -68,15 +68,15 @@ interface Membership {
 
 // ── Co-op color map ───────────────────────────────────────────────────────────
 const COOP_STYLES: Record<string, { bg: string; text: string; border: string }> = {
-  ESCNJ:           { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
-  'NJ State':      { bg: 'bg-blue-100',   text: 'text-blue-700',   border: 'border-blue-300' },
-  Sourcewell:      { bg: 'bg-teal-100',   text: 'text-teal-700',   border: 'border-teal-300' },
-  OMNIA:           { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300' },
-  'Bergen Co-op':  { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' },
-  'Hunterdon ESC': { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' },
-  NASPO:           { bg: 'bg-green-100',  text: 'text-green-800',  border: 'border-green-300' },
-  'NJ Edge':       { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-300' },
-  'Shared Contract': { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
+  ESCNJ:             { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
+  'NJ State':        { bg: 'bg-blue-100',   text: 'text-blue-700',   border: 'border-blue-300' },
+  Sourcewell:        { bg: 'bg-teal-100',   text: 'text-teal-700',   border: 'border-teal-300' },
+  OMNIA:             { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300' },
+  'Bergen Co-op':    { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' },
+  'Hunterdon ESC':   { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' },
+  NASPO:             { bg: 'bg-green-100',  text: 'text-green-800',  border: 'border-green-300' },
+  'NJ Edge':         { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-300' },
+  'Shared Contract': { bg: 'bg-amber-100',  text: 'text-amber-800',  border: 'border-amber-300' },
 }
 
 function CoopBadge({ abbr }: { abbr: string }) {
@@ -107,17 +107,13 @@ function VendorPanel({
   entityName?: string
   onClose: () => void
 }) {
-  // Find all contracts this vendor appears in
   const allVendorContracts = contracts.filter(c =>
     c.vendorList.some(v => v.id === vendor.id)
   )
-  // Eligible: real co-op contracts the institution is a member of,
-  // plus shared contracts where this institution is the lead agency
   const eligible = allVendorContracts.filter(c => {
     if (c.coop?.abbreviation === 'Shared Contract') return c.coop?.name === entityName
     return entityMemberships.includes(c.cooperative_id)
   })
-  // Ineligible: only real co-op contracts the institution can't access (shared contracts excluded)
   const ineligible = allVendorContracts.filter(c => {
     if (c.coop?.abbreviation === 'Shared Contract') return false
     return !entityMemberships.includes(c.cooperative_id)
@@ -145,7 +141,6 @@ function VendorPanel({
             </div>
           )}
 
-          {/* Contact info */}
           <div className="flex flex-wrap gap-2 mb-4">
             {vendor.phone && (
               <a href={`tel:${vendor.phone}`} className="flex items-center gap-1.5 text-xs bg-gray-50 px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100">
@@ -261,12 +256,12 @@ export default function Home() {
 
   const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null)
   const [entityMemberships, setEntityMemberships] = useState<string[]>([])
-  const [selectedTrade, setSelectedTrade] = useState<string | null>(null)
-  const [selectedCoop, setSelectedCoop] = useState<string | null>(null)
+  const [selectedTrades, setSelectedTrades] = useState<string[]>([])
+  const [selectedCoops, setSelectedCoops] = useState<string[]>([])
   const [query, setQuery] = useState('')
 
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   // Load initial data
   useEffect(() => {
@@ -285,8 +280,6 @@ export default function Home() {
   useEffect(() => {
     if (!selectedEntity) {
       setEntityMemberships([])
-      setGroupedContracts([])
-      setTrades([])
       return
     }
     async function loadMemberships() {
@@ -302,15 +295,22 @@ export default function Home() {
 
   // Search and group contracts
   const search = useCallback(async () => {
-    if (!selectedEntity || entityMemberships.length === 0) return
+    // Entity selected but memberships not yet loaded — wait for them
+    if (selectedEntity && entityMemberships.length === 0) {
+      setLoading(true)
+      return
+    }
     setLoading(true)
 
-    const isSharedFilter = selectedCoop === 'shared-contract'
-    const isCoopFilter = selectedCoop && !isSharedFilter
+    const realCoopFilters = selectedCoops.filter(id => id !== 'shared-contract')
+    const includesShared = selectedCoops.includes('shared-contract')
+    const isAllCoops = selectedCoops.length === 0
+    const showCoopContracts = isAllCoops || realCoopFilters.length > 0
+    const showSharedContracts = isAllCoops || includesShared
 
     const grouped: Record<string, GroupedContract> = {}
 
-    if (!isSharedFilter) {
+    if (showCoopContracts) {
       let q = supabase
         .from('contracts')
         .select(`
@@ -319,50 +319,69 @@ export default function Home() {
           vendors ( id, company_name, phone, email, website, listing_tier, cert_url ),
           cooperatives ( id, name, abbreviation, display_color )
         `)
-        .in('cooperative_id', entityMemberships)
         .in('status', ['active', 'extended'])
         .order('expiration_date', { ascending: true })
 
-      if (selectedTrade) q = q.eq('trade_category', selectedTrade)
-      if (isCoopFilter) q = q.eq('cooperative_id', selectedCoop)
-      if (query.trim()) {
-        q = q.or(`contract_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%`)
+      // Determine which co-op IDs to filter by
+      let coopIdsForQuery: string[] | null = null
+      if (selectedEntity) {
+        // Intersect selected co-ops with entity's memberships
+        coopIdsForQuery = realCoopFilters.length > 0
+          ? realCoopFilters.filter(id => entityMemberships.includes(id))
+          : entityMemberships
+        // Entity has no relevant memberships — skip co-op query
+        if (coopIdsForQuery.length === 0) {
+          coopIdsForQuery = null
+          showCoopContracts && Object.assign(grouped, {}) // no-op, just skip below
+        }
+      } else {
+        // No entity: filter to selected co-ops or show all
+        coopIdsForQuery = realCoopFilters.length > 0 ? realCoopFilters : null
       }
 
-      const { data, error } = await q
-      if (error) console.error(error)
+      const skipCoopQuery = selectedEntity && coopIdsForQuery === null
+      if (!skipCoopQuery) {
+        if (coopIdsForQuery !== null) q = q.in('cooperative_id', coopIdsForQuery)
+        if (selectedTrades.length > 0) q = q.in('trade_category', selectedTrades)
+        if (query.trim()) {
+          q = q.or(`contract_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%`)
+        }
 
-      if (data) {
-        data.forEach((row: Contract) => {
-          const key = `${row.contract_number}||${row.cooperative_id}`
-          const coop = (Array.isArray(row.cooperatives) ? row.cooperatives[0] : row.cooperatives) as Cooperative
-          const vendor = (Array.isArray(row.vendors) ? row.vendors[0] : row.vendors) as Vendor
+        const { data, error } = await q
+        if (error) console.error(error)
 
-          if (!grouped[key]) {
-            grouped[key] = {
-              id: row.id,
-              contract_name: row.contract_name,
-              contract_number: row.contract_number,
-              trade_category: row.trade_category,
-              status: row.status,
-              expiration_date: row.expiration_date,
-              notes: row.notes,
-              cooperative_id: row.cooperative_id,
-              source_url: (row as any).source_url || '',
-              vendorList: [],
-              coop,
-              source: 'cooperative',
+        if (data) {
+          data.forEach((row: Contract) => {
+            const key = `${row.contract_number}||${row.cooperative_id}`
+            const coop = (Array.isArray(row.cooperatives) ? row.cooperatives[0] : row.cooperatives) as Cooperative
+            const vendor = (Array.isArray(row.vendors) ? row.vendors[0] : row.vendors) as Vendor
+
+            if (!grouped[key]) {
+              grouped[key] = {
+                id: row.id,
+                contract_name: row.contract_name,
+                contract_number: row.contract_number,
+                trade_category: row.trade_category,
+                status: row.status,
+                expiration_date: row.expiration_date,
+                notes: row.notes,
+                cooperative_id: row.cooperative_id,
+                source_url: (row as any).source_url || '',
+                vendorList: [],
+                coop,
+                source: 'cooperative',
+              }
             }
-          }
 
-          if (vendor && !grouped[key].vendorList.find(v => v.id === vendor.id)) {
-            grouped[key].vendorList.push(vendor)
-          }
-        })
+            if (vendor && !grouped[key].vendorList.find(v => v.id === vendor.id)) {
+              grouped[key].vendorList.push(vendor)
+            }
+          })
+        }
       }
     }
 
-    if (!isCoopFilter) {
+    if (showSharedContracts) {
       let iq = supabase
         .from('institution_contracts')
         .select('*')
@@ -370,7 +389,7 @@ export default function Home() {
         .eq('piggyback_allowed', true)
         .gte('expiration_date', new Date().toISOString().split('T')[0])
 
-      if (selectedTrade) iq = iq.eq('trade_category', selectedTrade)
+      if (selectedTrades.length > 0) iq = iq.in('trade_category', selectedTrades)
       if (query.trim()) {
         iq = iq.or(`vendor_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%,institution_name.ilike.%${query}%`)
       }
@@ -416,29 +435,36 @@ export default function Home() {
     setGroupedContracts(result)
     const uniqueTrades = [...new Set(result.map(c => c.trade_category))].sort()
     setTrades(uniqueTrades)
-
     setLoading(false)
-  }, [selectedEntity, entityMemberships, selectedTrade, selectedCoop, query])
+  }, [selectedEntity, entityMemberships, selectedTrades, selectedCoops, query])
 
   useEffect(() => { search() }, [search])
 
   // Grouped entities for dropdown
-  const grouped = {
+  const groupedEntities = {
     university: entities.filter(e => e.type === 'university'),
     county_college: entities.filter(e => e.type === 'county_college'),
     county_gov: entities.filter(e => e.type === 'county_gov'),
   }
 
-  // Stats
+  // Stats (reflect current filtered view)
   const vendorSet = new Set(groupedContracts.flatMap(c => c.vendorList.map(v => v.id)))
   const coopSet = new Set(groupedContracts.map(c => c.cooperative_id))
 
-  // Split out contracts where the selected institution is the lead agency (vs. piggybacking on someone else's)
+  // Split contracts — lead agency first, then everything else
   function isLeadContract(c: GroupedContract) {
     return c.coop?.abbreviation === 'Shared Contract' && c.coop?.name === selectedEntity?.name
   }
   const myContracts = groupedContracts.filter(isLeadContract)
   const otherContracts = groupedContracts.filter(c => !isLeadContract(c))
+
+  function toggleTrade(t: string) {
+    setSelectedTrades(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
+  }
+
+  function toggleCoop(id: string) {
+    setSelectedCoops(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
 
   function renderCard(c: GroupedContract) {
     const days = daysUntil(c.expiration_date)
@@ -492,7 +518,13 @@ export default function Home() {
         </div>
 
         {c.notes && <div className="text-xs text-gray-400 mb-2">{c.notes}</div>}
-        {!!(c as any).source_url && <div className="mb-2"><a href={(c as any).source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2">📋 View source document →</a></div>}
+        {!!(c as any).source_url && (
+          <div className="mb-2">
+            <a href={(c as any).source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2">
+              📋 View source document →
+            </a>
+          </div>
+        )}
 
         <div className="text-xs text-gray-500 mb-2">
           <span className="font-semibold text-gray-700">Vendors: </span>
@@ -513,43 +545,58 @@ export default function Home() {
           )}
         </div>
 
-        {c.source === 'institution' ? (
-          isLead ? (
-            <div className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#FAC775', color: '#633806' }}>
-              <span>⭐</span>
-              <span>This is {c.institution_name}'s contract — other institutions can piggyback on it</span>
-            </div>
+        {/* Eligibility bar — only shown when an institution is selected */}
+        {selectedEntity && (
+          c.source === 'institution' ? (
+            isLead ? (
+              <div className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#FAC775', color: '#633806' }}>
+                <span>⭐</span>
+                <span>This is {c.institution_name}'s contract — other institutions can piggyback on it</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg">
+                <span>✓</span>
+                <span>{selectedEntity.name} can use this via {c.institution_name} — piggybacked on-call contract</span>
+                {c.piggyback_language && (
+                  <button
+                    onClick={() => alert(c.piggyback_language)}
+                    className="ml-auto text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
+                  >
+                    View piggyback language →
+                  </button>
+                )}
+              </div>
+            )
           ) : (
-            <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg">
+            <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
               <span>✓</span>
-              <span>{selectedEntity?.name} can use this via {c.institution_name} — piggybacked on-call contract</span>
-              {c.piggyback_language && (
+              <span>{selectedEntity.name} eligible via {coopLabel} — competitively bid cooperative pricing</span>
+              {!isPending && (
                 <button
-                  onClick={() => alert(c.piggyback_language)}
-                  className="ml-auto text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
+                  onClick={() => setSelectedVendor(c.vendorList[0])}
+                  className="ml-auto text-teal-600 underline underline-offset-2 hover:text-teal-800 whitespace-nowrap"
                 >
-                  View piggyback language →
+                  View profiles →
                 </button>
               )}
             </div>
           )
-        ) : (
-          <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-            <span>✓</span>
-            <span>{selectedEntity?.name} eligible via {coopLabel} — competitively bid cooperative pricing</span>
-            {!isPending && (
-              <button
-                onClick={() => setSelectedVendor(c.vendorList[0])}
-                className="ml-auto text-teal-600 underline underline-offset-2 hover:text-teal-800 whitespace-nowrap"
-              >
-                View profiles →
-              </button>
-            )}
-          </div>
         )}
       </div>
     )
   }
+
+  // Build a readable summary of active filters for the results line
+  const activeTradeLabel = selectedTrades.length === 1 ? selectedTrades[0] : selectedTrades.length > 1 ? `${selectedTrades.length} trades` : null
+  const realCoopFilters = selectedCoops.filter(id => id !== 'shared-contract')
+  const includesShared = selectedCoops.includes('shared-contract')
+  const activeCoopLabel = (() => {
+    const parts: string[] = []
+    if (realCoopFilters.length === 1) parts.push(cooperatives.find(c => c.id === realCoopFilters[0])?.abbreviation || '')
+    else if (realCoopFilters.length > 1) parts.push(`${realCoopFilters.length} co-ops`)
+    if (includesShared) parts.push('Shared Contract')
+    return parts.length > 0 ? parts.join(' · ') : null
+  })()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -578,20 +625,20 @@ export default function Home() {
             onChange={e => {
               const ent = entities.find(en => en.id === e.target.value) || null
               setSelectedEntity(ent)
-              setSelectedTrade(null)
-              setSelectedCoop(null)
+              setSelectedTrades([])
+              setSelectedCoops([])
               setQuery('')
             }}
           >
-            <option value="">Select your institution...</option>
+            <option value="">Filter by institution (optional)</option>
             <optgroup label="Public Universities">
-              {grouped.university.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+              {groupedEntities.university.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
             </optgroup>
             <optgroup label="County Colleges">
-              {grouped.county_college.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+              {groupedEntities.county_college.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
             </optgroup>
             <optgroup label="County Governments">
-              {grouped.county_gov.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+              {groupedEntities.county_gov.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
             </optgroup>
           </select>
 
@@ -606,133 +653,119 @@ export default function Home() {
       </div>
 
       <main className="max-w-4xl mx-auto px-4 py-5">
-        {!selectedEntity ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center mt-4">
-            <div className="text-4xl mb-3">🏛️</div>
-            <h2 className="text-lg font-bold text-[#1F3864] mb-2">Find compliant vendors in seconds</h2>
-            <p className="text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
-              Select your institution above to instantly see every vendor available through your cooperative purchasing memberships.
-            </p>
-            <ul className="text-left inline-block mt-4 text-sm text-gray-500 space-y-1.5">
-              <li>✓ Real contracts across 8 co-ops</li>
-              <li>✓ 28 NJ public institutions</li>
-              <li>✓ Filter by trade and by cooperative</li>
-              <li>✓ Vendor phone, email &amp; website</li>
-              <li>✓ Free for all NJ public institutions</li>
-            </ul>
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {[
+            { n: groupedContracts.length, l: 'contracts' },
+            { n: vendorSet.size, l: 'vendors' },
+            { n: coopSet.size, l: 'co-ops' },
+          ].map(s => (
+            <div key={s.l} className="bg-white border border-gray-200 rounded-lg p-3">
+              <div className="text-2xl font-bold text-[#1F3864]">{loading ? '…' : s.n}</div>
+              <div className="text-xs text-gray-400 mt-0.5">{s.l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Trade filter — multi-select */}
+        <div className="mb-1">
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Filter by trade</div>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            <button
+              onClick={() => setSelectedTrades([])}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedTrades.length === 0 ? 'bg-teal-50 border-teal-500 text-teal-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-teal-400'}`}
+            >
+              All trades
+            </button>
+            {trades.map(t => {
+              const isActive = selectedTrades.includes(t)
+              return (
+                <button
+                  key={t}
+                  onClick={() => toggleTrade(t)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${isActive ? 'bg-teal-50 border-teal-500 text-teal-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-teal-400'}`}
+                >
+                  {t}
+                </button>
+              )
+            })}
           </div>
+        </div>
+
+        {/* Co-op filter — multi-select */}
+        <div className="mb-4">
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Filter by co-op</div>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setSelectedCoops([])}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedCoops.length === 0 ? 'bg-teal-50 border-teal-500 text-teal-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-teal-400'}`}
+            >
+              All co-ops
+            </button>
+            {cooperatives.map(c => {
+              const isMember = !selectedEntity || entityMemberships.includes(c.id)
+              const isActive = selectedCoops.includes(c.id)
+              const s = COOP_STYLES[c.abbreviation] || { bg: '', text: '', border: '' }
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => isMember ? toggleCoop(c.id) : undefined}
+                  disabled={!isMember}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all
+                    ${!isMember ? 'opacity-30 cursor-not-allowed bg-white border-gray-200 text-gray-400' : ''}
+                    ${isMember && !isActive ? 'bg-white border-gray-300 text-gray-500 hover:border-gray-400' : ''}
+                    ${isActive ? `${s.bg} ${s.text} ${s.border} font-semibold` : ''}
+                  `}
+                >
+                  {c.abbreviation === 'NJ State' ? 'NJ State Contract' : c.abbreviation}
+                </button>
+              )
+            })}
+            <button
+              onClick={() => toggleCoop('shared-contract')}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedCoops.includes('shared-contract') ? 'bg-amber-50 border-amber-500 text-amber-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}
+            >
+              Shared Contract
+            </button>
+          </div>
+        </div>
+
+        {/* Results header */}
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-sm text-gray-500">
+            {loading ? 'Searching...' : `${groupedContracts.length} contract${groupedContracts.length !== 1 ? 's' : ''} found`}
+            {activeTradeLabel && ` · ${activeTradeLabel}`}
+            {activeCoopLabel && ` · ${activeCoopLabel}`}
+          </span>
+          {selectedEntity && (
+            <span className="text-xs bg-teal-50 text-teal-700 px-2.5 py-1 rounded-lg font-semibold">
+              ✓ {selectedEntity.name}
+            </span>
+          )}
+        </div>
+
+        {/* Contract cards */}
+        {groupedContracts.length === 0 && !loading ? (
+          <div className="text-center py-12 text-gray-400">No contracts match. Try adjusting the filters.</div>
         ) : (
           <>
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {[
-                { n: groupedContracts.length, l: 'contracts available' },
-                { n: vendorSet.size, l: 'vendors available' },
-                { n: coopSet.size, l: 'co-ops accessible' },
-              ].map(s => (
-                <div key={s.l} className="bg-white border border-gray-200 rounded-lg p-3">
-                  <div className="text-2xl font-bold text-[#1F3864]">{loading ? '…' : s.n}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{s.l}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Trade filter */}
-            <div className="mb-1">
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Filter by trade</div>
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                <button
-                  onClick={() => setSelectedTrade(null)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedTrade === null ? 'bg-teal-50 border-teal-500 text-teal-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-teal-400'}`}
-                >
-                  All trades
-                </button>
-                {trades.map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setSelectedTrade(t === selectedTrade ? null : t)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedTrade === t ? 'bg-teal-50 border-teal-500 text-teal-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-teal-400'}`}
-                  >
-                    {t}
-                  </button>
-                ))}
+            {myContracts.length > 0 && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: '#854F0B' }}>
+                  {selectedEntity?.name}'s contracts
+                </span>
+                <div className="flex-1 h-px" style={{ backgroundColor: '#EF9F27' }} />
               </div>
-            </div>
-
-            {/* Co-op filter */}
-            <div className="mb-4">
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Filter by co-op</div>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  onClick={() => setSelectedCoop(null)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedCoop === null ? 'bg-teal-50 border-teal-500 text-teal-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-teal-400'}`}
-                >
-                  All co-ops
-                </button>
-                {cooperatives.map(c => {
-                  const isMember = entityMemberships.includes(c.id)
-                  const isActive = selectedCoop === c.id
-                  const s = COOP_STYLES[c.abbreviation] || { bg: '', text: '', border: '' }
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => isMember ? setSelectedCoop(c.id === selectedCoop ? null : c.id) : null}
-                      disabled={!isMember}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition-all
-                        ${!isMember ? 'opacity-30 cursor-not-allowed bg-white border-gray-200 text-gray-400' : ''}
-                        ${isMember && !isActive ? 'bg-white border-gray-300 text-gray-500 hover:border-gray-400' : ''}
-                        ${isActive ? `${s.bg} ${s.text} ${s.border} font-semibold` : ''}
-                      `}
-                    >
-                      {c.abbreviation === 'NJ State' ? 'NJ State Contract' : c.abbreviation}
-                    </button>
-                  )
-                })}
-                <button
-                  onClick={() => setSelectedCoop(selectedCoop === 'shared-contract' ? null : 'shared-contract')}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${selectedCoop === 'shared-contract' ? 'bg-amber-50 border-amber-500 text-amber-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}
-                >
-                  Shared Contract
-                </button>
-              </div>
-            </div>
-
-            {/* Results header */}
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-sm text-gray-500">
-                {loading ? 'Searching...' : `${groupedContracts.length} contract${groupedContracts.length !== 1 ? 's' : ''} found`}
-                {selectedTrade && ` · ${selectedTrade}`}
-                {selectedCoop && ` · ${selectedCoop === 'shared-contract' ? 'Shared Contract' : cooperatives.find(c => c.id === selectedCoop)?.abbreviation}`}
-              </span>
-              <span className="text-xs bg-teal-50 text-teal-700 px-2.5 py-1 rounded-lg font-semibold">
-                ✓ {selectedEntity.name}
-              </span>
-            </div>
-
-            {/* Contract cards */}
-            {groupedContracts.length === 0 && !loading ? (
-              <div className="text-center py-12 text-gray-400">No contracts match. Try adjusting the filters.</div>
-            ) : (
-              <>
-                {myContracts.length > 0 && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: '#854F0B' }}>
-                      {selectedEntity.name}'s contracts
-                    </span>
-                    <div className="flex-1 h-px" style={{ backgroundColor: '#EF9F27' }} />
-                  </div>
-                )}
-                {myContracts.map(c => renderCard(c))}
-
-                {myContracts.length > 0 && (
-                  <div className="flex items-center gap-2 mt-4 mb-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">Co-op contracts</span>
-                    <div className="flex-1 h-px bg-gray-200" />
-                  </div>
-                )}
-                {otherContracts.map(c => renderCard(c))}
-              </>
             )}
+            {myContracts.map(c => renderCard(c))}
+
+            {myContracts.length > 0 && (
+              <div className="flex items-center gap-2 mt-4 mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">Co-op contracts</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+            )}
+            {otherContracts.map(c => renderCard(c))}
           </>
         )}
       </main>
