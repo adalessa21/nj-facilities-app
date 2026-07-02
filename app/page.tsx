@@ -194,6 +194,27 @@ function VendorPanel({
                         Expires {exp}
                         {days < 180 && days > 0 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
                       </div>
+                      {isShared ? (
+                        c.piggyback_language && (
+                          <button
+                            onClick={() => alert(c.piggyback_language)}
+                            className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2 mt-1 block"
+                          >
+                            View piggyback language →
+                          </button>
+                        )
+                      ) : (
+                        c.source_url && (
+                          <a
+                            href={c.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2 mt-1 block"
+                          >
+                            View on {c.coop.abbreviation} →
+                          </a>
+                        )
+                      )}
                     </div>
                     <span className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                       {c.status === 'active' ? 'Active' : 'Extended'}
