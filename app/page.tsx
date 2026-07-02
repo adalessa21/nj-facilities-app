@@ -211,9 +211,13 @@ function VendorPanel({
                         )
                       )}
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {c.status === 'active' ? 'Active' : 'Extended'}
-                    </span>
+                    {(() => {
+                      const vpExpired = days <= 0
+                      const vpSoon = !vpExpired && days <= 180
+                      const vpClass = vpExpired ? 'bg-red-100 text-red-700' : vpSoon || c.status === 'extended' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                      const vpLabel = vpExpired ? 'Expired' : vpSoon ? 'Expiring Soon' : c.status === 'extended' ? 'Extended' : 'Active'
+                      return <span className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${vpClass}`}>{vpLabel}</span>
+                    })()}
                   </div>
                 )
               })}
@@ -430,8 +434,15 @@ export default function Home() {
       })
     }
 
+    const now = Date.now()
     const result = Object.values(grouped)
-    result.sort((a, b) => new Date(a.expiration_date).getTime() - new Date(b.expiration_date).getTime())
+      .filter(c => new Date(c.expiration_date).getTime() >= now)
+    result.sort((a, b) => {
+      const tradeOrder = a.trade_category.localeCompare(b.trade_category)
+      if (tradeOrder !== 0) return tradeOrder
+      // Within the same trade: longest remaining first (descending expiration)
+      return new Date(b.expiration_date).getTime() - new Date(a.expiration_date).getTime()
+    })
     setGroupedContracts(result)
     // Only refresh the chip list when no trade filter is active — prevents the list
     // collapsing to just selected trades when filters narrow the result set
@@ -450,6 +461,8 @@ export default function Home() {
     county_college: entities.filter(e => e.type === 'county_college'),
     county_gov: entities.filter(e => e.type === 'county_gov'),
   }
+
+  const today = new Date()
 
   // Stats (reflect current filtered view)
   const vendorSet = new Set(groupedContracts.flatMap(c => c.vendorList.map(v => v.id)))
@@ -477,6 +490,20 @@ export default function Home() {
     const coopAbbr = c.coop?.abbreviation || ''
     const coopLabel = coopAbbr === 'NJ State' ? 'NJ State Contract' : coopAbbr
     const isLead = isLeadContract(c)
+    const isExpired = days <= 0
+    const isExpiringSoon = !isExpired && days <= 180
+    const badgeClass = isExpired
+      ? 'bg-red-100 text-red-700'
+      : isExpiringSoon || c.status === 'extended'
+        ? 'bg-amber-100 text-amber-700'
+        : 'bg-green-100 text-green-700'
+    const badgeLabel = isExpired
+      ? 'Expired'
+      : isExpiringSoon
+        ? 'Expiring Soon'
+        : c.status === 'extended'
+          ? 'Extended'
+          : 'Active'
 
     return (
       <div
@@ -507,8 +534,8 @@ export default function Home() {
               )}
             </div>
           </div>
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-            {c.status === 'active' ? 'Active' : 'Extended'}
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${badgeClass}`}>
+            {badgeLabel}
           </span>
         </div>
 
