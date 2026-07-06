@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabaseAuth as supabase } from '@/lib/supabase-auth'
 import Link from 'next/link'
 
 export default function LoginPage() {

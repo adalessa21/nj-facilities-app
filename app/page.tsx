@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { supabaseAuth } from '@/lib/supabase-auth'
 import Link from 'next/link'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -299,13 +300,13 @@ export default function Home() {
     }
 
     ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      const loggedInUser = session?.user ?? (await supabase.auth.getUser()).data.user
+      const { data: { session } } = await supabaseAuth.auth.getSession()
+      const loggedInUser = session?.user ?? (await supabaseAuth.auth.getUser()).data.user
       setUser(loggedInUser)
       if (loggedInUser?.email) detectAndSetInstitution(loggedInUser.email)
     })()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
       const loggedInUser = session?.user ?? null
       setUser(loggedInUser)
       if (loggedInUser?.email) {
@@ -682,7 +683,7 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <span className="text-xs text-white/50 hidden sm:block">{user.email}</span>
                 <button
-                  onClick={() => { supabase.auth.signOut(); setSelectedEntity(null); setAutoDetected(false) }}
+                  onClick={() => { supabaseAuth.auth.signOut(); setSelectedEntity(null); setAutoDetected(false) }}
                   className="text-xs text-white/70 hover:text-white border border-white/30 hover:border-white/60 rounded px-2.5 py-1 transition-colors"
                 >
                   Sign out
@@ -760,7 +761,7 @@ export default function Home() {
                 Manage my co-op memberships
               </a>
               <button
-                onClick={() => { supabase.auth.signOut(); setSelectedEntity(null); setAutoDetected(false) }}
+                onClick={() => { supabaseAuth.auth.signOut(); setSelectedEntity(null); setAutoDetected(false) }}
                 className="text-xs text-teal-600 hover:text-teal-800"
               >
                 Not you? Sign out
