@@ -267,6 +267,7 @@ export default function Home() {
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [autoDetected, setAutoDetected] = useState(false)
 
   // Load initial data
   useEffect(() => {
@@ -283,17 +284,36 @@ export default function Home() {
 
   // Auth state
   useEffect(() => {
+    async function detectAndSetInstitution(email: string) {
+      const domain = email.split('@')[1]
+      if (!domain) return
+      const { data } = await supabase
+        .from('entities')
+        .select('id, name, type, county')
+        .eq('email_domain', domain)
+        .single()
+      if (data) {
+        setSelectedEntity(data)
+        setAutoDetected(true)
+      }
+    }
+
     ;(async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUser(session.user)
-      } else {
-        const { data: { user } } = await supabase.auth.getUser()
-        setUser(user)
-      }
+      const loggedInUser = session?.user ?? (await supabase.auth.getUser()).data.user
+      setUser(loggedInUser)
+      if (loggedInUser?.email) detectAndSetInstitution(loggedInUser.email)
     })()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+      const loggedInUser = session?.user ?? null
+      setUser(loggedInUser)
+      if (loggedInUser?.email) {
+        detectAndSetInstitution(loggedInUser.email)
+      } else {
+        setSelectedEntity(null)
+        setAutoDetected(false)
+      }
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -662,7 +682,7 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <span className="text-xs text-white/50 hidden sm:block">{user.email}</span>
                 <button
-                  onClick={() => supabase.auth.signOut()}
+                  onClick={() => { supabase.auth.signOut(); setSelectedEntity(null); setAutoDetected(false) }}
                   className="text-xs text-white/70 hover:text-white border border-white/30 hover:border-white/60 rounded px-2.5 py-1 transition-colors"
                 >
                   Sign out
@@ -727,6 +747,28 @@ export default function Home() {
           />
         </div>
       </div>
+
+      {/* My Institution bar — shown when institution was auto-detected from email */}
+      {user && autoDetected && selectedEntity && (
+        <div className="bg-teal-50 border-b border-teal-200">
+          <div className="max-w-4xl mx-auto px-4 py-2 flex items-center justify-between">
+            <span className="text-xs text-teal-800 font-medium">
+              🏛️ Signed in as <strong>{selectedEntity.name}</strong>
+            </span>
+            <div className="flex items-center gap-3">
+              <a href="#" className="text-xs text-teal-700 hover:text-teal-900 underline underline-offset-2">
+                Manage my co-op memberships
+              </a>
+              <button
+                onClick={() => { supabase.auth.signOut(); setSelectedEntity(null); setAutoDetected(false) }}
+                className="text-xs text-teal-600 hover:text-teal-800"
+              >
+                Not you? Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-4xl mx-auto px-4 py-5">
         {/* Stats */}
