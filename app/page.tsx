@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -284,17 +283,16 @@ export default function Home() {
 
   // Auth state
   useEffect(() => {
-    const authClient = createClient()
     ;(async () => {
-      const { data: { session } } = await authClient.auth.getSession()
+      const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         setUser(session.user)
       } else {
-        const { data: { user } } = await authClient.auth.getUser()
+        const { data: { user } } = await supabase.auth.getUser()
         setUser(user)
       }
     })()
-    const { data: { subscription } } = authClient.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
     return () => subscription.unsubscribe()
@@ -664,7 +662,7 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <span className="text-xs text-white/50 hidden sm:block">{user.email}</span>
                 <button
-                  onClick={() => createClient().auth.signOut()}
+                  onClick={() => supabase.auth.signOut()}
                   className="text-xs text-white/70 hover:text-white border border-white/30 hover:border-white/60 rounded px-2.5 py-1 transition-colors"
                 >
                   Sign out
