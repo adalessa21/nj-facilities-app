@@ -757,9 +757,9 @@ export default function Home() {
               🏛️ Signed in as <strong>{selectedEntity.name}</strong>
             </span>
             <div className="flex items-center gap-3">
-              <a href="#" className="text-xs text-teal-700 hover:text-teal-900 underline underline-offset-2">
+              <Link href="/my-institution" className="text-xs text-teal-700 hover:text-teal-900 underline underline-offset-2">
                 Manage my co-op memberships
-              </a>
+              </Link>
               <button
                 onClick={() => { supabaseAuth.auth.signOut(); setSelectedEntity(null); setAutoDetected(false) }}
                 className="text-xs text-teal-600 hover:text-teal-800"
