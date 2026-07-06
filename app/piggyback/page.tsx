@@ -137,7 +137,7 @@ export default function PiggybackSubmit() {
         <header className="bg-[#1F3864] text-white">
           <div className="max-w-3xl mx-auto px-4 py-5">
             <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform</div>
-            <h1 className="text-xl font-bold">Submit a Piggyback Contract</h1>
+            <h1 className="text-xl font-bold">Submit a Shared Contract</h1>
           </div>
         </header>
         <div className="max-w-3xl mx-auto px-4 py-12">
@@ -174,9 +174,9 @@ export default function PiggybackSubmit() {
       <header className="bg-[#1F3864] text-white">
         <div className="max-w-3xl mx-auto px-4 py-5">
           <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform</div>
-          <h1 className="text-xl font-bold">Submit a Piggyback Contract</h1>
+          <h1 className="text-xl font-bold">Submit a Shared Contract</h1>
           <p className="text-white/60 text-sm mt-1">
-            Share your institution's on-call contract so other NJ public entities can piggyback on it.
+            Share your institution's on-call contract so other NJ public entities can use it.
           </p>
         </div>
       </header>
@@ -263,14 +263,14 @@ export default function PiggybackSubmit() {
             </div>
           </div>
 
-          <h2 className="font-bold text-gray-800 mb-1">Piggyback Details</h2>
+          <h2 className="font-bold text-gray-800 mb-1">Sharing Details</h2>
           <p className="text-sm text-gray-500 mb-4">
-            Let other institutions know if and how they can piggyback on this contract.
+            Let other institutions know if and how they can use this contract.
           </p>
 
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Piggyback Allowed</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Sharing Allowed</label>
               <div className="flex items-center gap-3 mt-1">
                 <button
                   type="button"
@@ -356,15 +356,15 @@ export default function PiggybackSubmit() {
               </div>
             )}
             <div className="col-span-2">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Piggyback Language</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Authorization Language</label>
               <textarea
                 value={form.piggyback_language}
                 onChange={e => update('piggyback_language', e.target.value)}
-                placeholder="Paste the contract language that authorizes piggyback use..."
+                placeholder="Paste the contract language that authorizes shared use..."
                 rows={3}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
-              <p className="text-xs text-gray-400 mt-1">The exact clause from the contract or bid spec that permits other entities to piggyback.</p>
+              <p className="text-xs text-gray-400 mt-1">The exact clause from the contract or bid spec that permits other entities to use this contract.</p>
             </div>
             <div className="col-span-2">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Insurance Requirements</label>

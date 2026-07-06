@@ -332,7 +332,7 @@ export default function AdminInstitutionContracts() {
               className={inputCls} />
           </div>
           <div>
-            <label className={labelCls}>Piggyback Allowed</label>
+            <label className={labelCls}>Sharing Allowed</label>
             <div className="flex items-center gap-3 mt-1">
               <button type="button"
                 onClick={() => setEditForm(f => ({ ...f, piggyback_allowed: true }))}
@@ -404,10 +404,10 @@ export default function AdminInstitutionContracts() {
           )}
 
           <div className="col-span-2">
-            <label className={labelCls}>Piggyback Language</label>
+            <label className={labelCls}>Authorization Language</label>
             <textarea value={editForm.piggyback_language}
               onChange={e => setEditForm(f => ({ ...f, piggyback_language: e.target.value }))}
-              placeholder="Paste the contract language that authorizes piggyback use..."
+              placeholder="Paste the contract language that authorizes shared use..."
               rows={3} className={inputCls} />
           </div>
           <div>
@@ -460,7 +460,7 @@ export default function AdminInstitutionContracts() {
           <div className="text-xs tracking-widest uppercase text-white/50 mb-1">Admin Portal</div>
           <h1 className="text-2xl font-bold">Institution Contracts</h1>
           <p className="text-white/60 text-sm mt-1">
-            Review piggybacked on-call contracts submitted by NJ institutions — {contracts.length} total · {pendingCount} pending
+            Review shared on-call contracts submitted by NJ institutions — {contracts.length} total · {pendingCount} pending
           </p>
         </div>
       </div>
@@ -510,7 +510,7 @@ export default function AdminInstitutionContracts() {
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Vendor</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Trade</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Dates</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Piggyback</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Sharing</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Submitter</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
                   <th className="px-4 py-3"></th>
@@ -625,7 +625,7 @@ export default function AdminInstitutionContracts() {
                 </div>
                 {c.piggyback_language && (
                   <div className="col-span-2">
-                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Piggyback Language</div>
+                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Authorization Language</div>
                     <div className="text-gray-700 bg-gray-50 rounded-lg p-3 text-xs leading-relaxed whitespace-pre-wrap">{c.piggyback_language}</div>
                   </div>
                 )}

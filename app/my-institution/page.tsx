@@ -6,6 +6,14 @@ import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabase-auth'
 import Link from 'next/link'
 
+const TRADES = [
+  'Automotive Parts','Doors & Hardware','Electrical','Elevator','Equipment Rental','Fencing',
+  'Fire Alarm','Fire Protection','Fleet Maintenance','Fleet Vehicles','Flooring',
+  'Furniture','General Construction','Generator','Grounds','HVAC',
+  'Janitorial Supplies','Lighting','MRO Supplies','Painting','Paving',
+  'Pest Control','Plumbing','Roofing','Security','Waste & Recycling',
+]
+
 interface Entity {
   id: string
   name: string
@@ -20,6 +28,48 @@ interface Cooperative {
   display_color: string
 }
 
+interface MyContract {
+  id: string
+  institution_name: string
+  vendor_name: string
+  trade_category: string
+  contract_number: string
+  start_date: string
+  expiration_date: string
+  piggyback_allowed: boolean
+  piggyback_language: string
+  authorized_users: string
+  insurance_requirements: string
+  notes: string
+  approved_by_admin: boolean
+}
+
+interface ContractForm {
+  vendor_name: string
+  trade_category: string
+  contract_number: string
+  start_date: string
+  expiration_date: string
+  piggyback_allowed: boolean
+  piggyback_language: string
+  authorized_users: string
+  insurance_requirements: string
+  notes: string
+}
+
+const emptyContractForm: ContractForm = {
+  vendor_name: '',
+  trade_category: '',
+  contract_number: '',
+  start_date: '',
+  expiration_date: '',
+  piggyback_allowed: true,
+  piggyback_language: '',
+  authorized_users: 'Any NJ public entity',
+  insurance_requirements: '',
+  notes: '',
+}
+
 const COOP_STYLES: Record<string, { bg: string; text: string; border: string }> = {
   ESCNJ:           { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
   'NJ State':      { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200' },
@@ -30,6 +80,9 @@ const COOP_STYLES: Record<string, { bg: string; text: string; border: string }> 
   NASPO:           { bg: 'bg-green-50',  text: 'text-green-800',  border: 'border-green-200' },
   'NJ Edge':       { bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200' },
 }
+
+const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400'
+const labelCls = 'text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1'
 
 export default function MyInstitutionPage() {
   const router = useRouter()
@@ -42,101 +95,167 @@ export default function MyInstitutionPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
+  const [myContracts, setMyContracts] = useState<MyContract[]>([])
+  const [contractMessage, setContractMessage] = useState('')
+  const [editingContractId, setEditingContractId] = useState<string | null>(null)
+  const [showContractForm, setShowContractForm] = useState(false)
+  const [contractForm, setContractForm] = useState<ContractForm>(emptyContractForm)
+  const [savingContract, setSavingContract] = useState(false)
+
   useEffect(() => {
     async function init() {
-      // Check auth
       const { data: { session } } = await supabaseAuth.auth.getSession()
       const user = session?.user ?? (await supabaseAuth.auth.getUser()).data.user
 
-      if (!user?.email) {
-        router.replace('/login')
-        return
-      }
-
+      if (!user?.email) { router.replace('/login'); return }
       const domain = user.email.split('@')[1]
-      if (!domain) {
-        router.replace('/login')
-        return
-      }
+      if (!domain) { router.replace('/login'); return }
 
-      // Look up institution by email domain
       const { data: entityData } = await supabase
         .from('entities')
         .select('id, name, type, county')
         .eq('email_domain', domain)
         .single()
 
-      if (!entityData) {
-        router.replace('/login')
-        return
-      }
-
+      if (!entityData) { router.replace('/login'); return }
       setEntity(entityData)
 
-      // Load cooperatives and memberships in parallel
-      const [{ data: coops }, { data: memberships }] = await Promise.all([
+      const [{ data: coops }, { data: memberships }, { data: contracts }] = await Promise.all([
         supabase.from('cooperatives').select('id, name, abbreviation, display_color').order('name'),
         supabase.from('memberships').select('cooperative_id').eq('entity_id', entityData.id),
+        supabase.from('institution_contracts').select('*').eq('institution_name', entityData.name).order('expiration_date', { ascending: true }),
       ])
 
       if (coops) setCooperatives(coops)
-
       const currentIds = (memberships ?? []).map((m: { cooperative_id: string }) => m.cooperative_id)
       setSelectedCoopIds(currentIds)
       setOriginalCoopIds(currentIds)
+      if (contracts) setMyContracts(contracts)
       setLoading(false)
     }
-
     init()
   }, [router])
 
+  async function reloadContracts(entityName: string) {
+    const { data } = await supabase
+      .from('institution_contracts')
+      .select('*')
+      .eq('institution_name', entityName)
+      .order('expiration_date', { ascending: true })
+    if (data) setMyContracts(data)
+  }
+
+  // ── Memberships ──────────────────────────────────────────────────────────────
+
   function toggleCoop(id: string) {
-    setSelectedCoopIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
+    setSelectedCoopIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
     setMessage('')
   }
 
-  async function save() {
+  async function saveMemberships() {
     if (!entity) return
-    setSaving(true)
-    setMessage('')
+    setSaving(true); setMessage('')
 
     const toAdd = selectedCoopIds.filter(id => !originalCoopIds.includes(id))
     const toRemove = originalCoopIds.filter(id => !selectedCoopIds.includes(id))
 
     if (toAdd.length > 0) {
       const { error } = await supabase.from('memberships').upsert(
-        toAdd.map(coopId => ({
-          entity_id: entity.id,
-          cooperative_id: coopId,
-          status: 'confirmed',
-        })),
+        toAdd.map(coopId => ({ entity_id: entity.id, cooperative_id: coopId, status: 'confirmed' })),
         { onConflict: 'entity_id,cooperative_id' }
       )
-      if (error) {
-        setMessage('Error saving: ' + error.message)
-        setSaving(false)
-        return
-      }
+      if (error) { setMessage('Error saving: ' + error.message); setSaving(false); return }
     }
-
     for (const coopId of toRemove) {
-      const { error } = await supabase.from('memberships')
-        .delete()
-        .eq('entity_id', entity.id)
-        .eq('cooperative_id', coopId)
-      if (error) {
-        setMessage('Error saving: ' + error.message)
-        setSaving(false)
-        return
-      }
+      const { error } = await supabase.from('memberships').delete().eq('entity_id', entity.id).eq('cooperative_id', coopId)
+      if (error) { setMessage('Error saving: ' + error.message); setSaving(false); return }
     }
 
     setOriginalCoopIds(selectedCoopIds)
     setMessage('✓ Memberships saved successfully.')
     setSaving(false)
   }
+
+  // ── Contracts ────────────────────────────────────────────────────────────────
+
+  function openEditContract(c: MyContract) {
+    setContractForm({
+      vendor_name: c.vendor_name,
+      trade_category: c.trade_category,
+      contract_number: c.contract_number || '',
+      start_date: c.start_date ? c.start_date.split('T')[0] : '',
+      expiration_date: c.expiration_date ? c.expiration_date.split('T')[0] : '',
+      piggyback_allowed: c.piggyback_allowed,
+      piggyback_language: c.piggyback_language || '',
+      authorized_users: c.authorized_users || 'Any NJ public entity',
+      insurance_requirements: c.insurance_requirements || '',
+      notes: c.notes || '',
+    })
+    setEditingContractId(c.id)
+    setShowContractForm(true)
+    setContractMessage('')
+  }
+
+  function openAddContract() {
+    setContractForm(emptyContractForm)
+    setEditingContractId(null)
+    setShowContractForm(true)
+    setContractMessage('')
+  }
+
+  function cancelContractForm() {
+    setShowContractForm(false)
+    setEditingContractId(null)
+    setContractForm(emptyContractForm)
+  }
+
+  async function saveContract() {
+    if (!entity) return
+    if (!contractForm.vendor_name || !contractForm.expiration_date) {
+      setContractMessage('Vendor name and expiration date are required.')
+      return
+    }
+    setSavingContract(true); setContractMessage('')
+
+    const payload = {
+      institution_name: entity.name,
+      vendor_name: contractForm.vendor_name,
+      trade_category: contractForm.trade_category,
+      contract_number: contractForm.contract_number || null,
+      start_date: contractForm.start_date || null,
+      expiration_date: contractForm.expiration_date,
+      piggyback_allowed: contractForm.piggyback_allowed,
+      piggyback_language: contractForm.piggyback_language || null,
+      authorized_users: contractForm.authorized_users || null,
+      insurance_requirements: contractForm.insurance_requirements || null,
+      notes: contractForm.notes || null,
+      approved_by_admin: true,
+    }
+
+    let error
+    if (editingContractId) {
+      ;({ error } = await supabase.from('institution_contracts').update(payload).eq('id', editingContractId))
+    } else {
+      ;({ error } = await supabase.from('institution_contracts').insert({ ...payload, submitter_name: null, submitter_email: null }))
+    }
+
+    setSavingContract(false)
+    if (error) { setContractMessage('Error: ' + error.message); return }
+
+    setContractMessage('✓ Contract saved successfully.')
+    cancelContractForm()
+    await reloadContracts(entity.name)
+  }
+
+  async function deleteContract(id: string, vendorName: string) {
+    if (!confirm(`Delete the contract for "${vendorName}"? This cannot be undone.`)) return
+    const { error } = await supabase.from('institution_contracts').delete().eq('id', id)
+    if (error) { setContractMessage('Error: ' + error.message); return }
+    setContractMessage('✓ Contract deleted.')
+    if (entity) await reloadContracts(entity.name)
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -148,9 +267,11 @@ export default function MyInstitutionPage() {
 
   if (!entity) return null
 
-  const hasChanges =
-    selectedCoopIds.length !== originalCoopIds.length ||
-    selectedCoopIds.some(id => !originalCoopIds.includes(id))
+  const hasCoopChanges = selectedCoopIds.length !== originalCoopIds.length || selectedCoopIds.some(id => !originalCoopIds.includes(id))
+
+  function daysUntil(d: string) {
+    return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -167,6 +288,7 @@ export default function MyInstitutionPage() {
           ← Back to platform
         </Link>
 
+        {/* Co-op Memberships */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 mt-4">
           <h2 className="font-bold text-gray-800 mb-1">Co-op Memberships</h2>
           <p className="text-sm text-gray-500 mb-4">
@@ -188,12 +310,7 @@ export default function MyInstitutionPage() {
                   key={c.id}
                   className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isChecked ? `${s.bg} ${s.border}` : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleCoop(c.id)}
-                    className="w-4 h-4 accent-teal-600"
-                  />
+                  <input type="checkbox" checked={isChecked} onChange={() => toggleCoop(c.id)} className="w-4 h-4 accent-teal-600" />
                   <div>
                     <div className={`text-sm font-semibold ${isChecked ? s.text : 'text-gray-700'}`}>
                       {c.abbreviation === 'NJ State' ? 'NJ State Contract' : c.abbreviation}
@@ -206,14 +323,179 @@ export default function MyInstitutionPage() {
           </div>
 
           <button
-            onClick={save}
-            disabled={saving || !hasChanges}
+            onClick={saveMemberships}
+            disabled={saving || !hasCoopChanges}
             className="bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
           >
             {saving ? 'Saving…' : 'Save Memberships'}
           </button>
-          {!hasChanges && !saving && (
-            <span className="ml-3 text-xs text-gray-400">No changes to save</span>
+          {!hasCoopChanges && !saving && <span className="ml-3 text-xs text-gray-400">No changes to save</span>}
+        </div>
+
+        {/* My Shared Contracts */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mt-4">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-bold text-gray-800">My Shared Contracts</h2>
+            <button
+              onClick={openAddContract}
+              className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
+            >
+              + Add Shared Contract
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 mb-4">
+            On-call contracts your institution has shared with the NJ procurement network.
+          </p>
+
+          {contractMessage && (
+            <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium ${contractMessage.startsWith('✓') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+              {contractMessage}
+            </div>
+          )}
+
+          {myContracts.length === 0 && !showContractForm ? (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              No shared contracts yet. Add one to let other institutions use your on-call vendors.
+            </div>
+          ) : (
+            <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Vendor</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Trade</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Expires</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Sharing</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myContracts.map((c, i) => {
+                    const days = daysUntil(c.expiration_date)
+                    const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    const isEditing = editingContractId === c.id
+                    return (
+                      <tr key={c.id} className={`border-b border-gray-100 ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-amber-50/40' : ''}`}>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-gray-800">{c.vendor_name}</div>
+                          {c.contract_number && <div className="text-xs text-gray-400 font-mono">{c.contract_number}</div>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">{c.trade_category}</td>
+                        <td className="px-4 py-3">
+                          <div className="text-gray-600 text-xs">{exp}</div>
+                          {days < 90 && days > 0 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
+                          {days <= 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${c.piggyback_allowed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                            {c.piggyback_allowed ? 'Yes' : 'No'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => openEditContract(c)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button>
+                            <button onClick={() => deleteContract(c.id, c.vendor_name)} className="text-xs text-red-500 hover:text-red-700 font-medium">Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Inline add / edit form */}
+          {showContractForm && (
+            <div className="border border-amber-200 rounded-xl p-5 bg-amber-50/20">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="font-bold text-gray-800">{editingContractId ? 'Edit Contract' : 'Add Shared Contract'}</h3>
+                <button onClick={cancelContractForm} className="text-gray-400 hover:text-gray-600 text-sm border border-gray-200 rounded px-2 py-0.5">✕ Cancel</button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className={labelCls}>Vendor Name *</label>
+                  <input type="text" value={contractForm.vendor_name}
+                    onChange={e => setContractForm(f => ({ ...f, vendor_name: e.target.value }))}
+                    placeholder="e.g. ABC Mechanical Inc." className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Trade Category</label>
+                  <select value={contractForm.trade_category}
+                    onChange={e => setContractForm(f => ({ ...f, trade_category: e.target.value }))}
+                    className={inputCls}>
+                    <option value="">Select trade...</option>
+                    {TRADES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Contract Number</label>
+                  <input type="text" value={contractForm.contract_number}
+                    onChange={e => setContractForm(f => ({ ...f, contract_number: e.target.value }))}
+                    placeholder="e.g. RU-2024-HVAC-001" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Expiration Date *</label>
+                  <input type="date" value={contractForm.expiration_date}
+                    onChange={e => setContractForm(f => ({ ...f, expiration_date: e.target.value }))}
+                    className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Start Date</label>
+                  <input type="date" value={contractForm.start_date}
+                    onChange={e => setContractForm(f => ({ ...f, start_date: e.target.value }))}
+                    className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Sharing Allowed</label>
+                  <div className="flex gap-3 mt-1">
+                    <button type="button"
+                      onClick={() => setContractForm(f => ({ ...f, piggyback_allowed: true }))}
+                      className={`text-sm px-4 py-2 rounded-lg border font-medium transition-colors ${contractForm.piggyback_allowed ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-gray-300 text-gray-500'}`}>
+                      Yes
+                    </button>
+                    <button type="button"
+                      onClick={() => setContractForm(f => ({ ...f, piggyback_allowed: false }))}
+                      className={`text-sm px-4 py-2 rounded-lg border font-medium transition-colors ${!contractForm.piggyback_allowed ? 'bg-red-50 border-red-400 text-red-700' : 'bg-white border-gray-300 text-gray-500'}`}>
+                      No
+                    </button>
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <label className={labelCls}>Authorization Language</label>
+                  <textarea value={contractForm.piggyback_language}
+                    onChange={e => setContractForm(f => ({ ...f, piggyback_language: e.target.value }))}
+                    placeholder="Paste the contract language that authorizes shared use..."
+                    rows={3} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Insurance Requirements</label>
+                  <input type="text" value={contractForm.insurance_requirements}
+                    onChange={e => setContractForm(f => ({ ...f, insurance_requirements: e.target.value }))}
+                    placeholder="e.g. $1M general liability" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Notes</label>
+                  <textarea value={contractForm.notes}
+                    onChange={e => setContractForm(f => ({ ...f, notes: e.target.value }))}
+                    rows={2} className={inputCls} />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={saveContract}
+                  disabled={savingContract}
+                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-lg"
+                >
+                  {savingContract ? 'Saving…' : editingContractId ? 'Save Changes' : 'Add Contract'}
+                </button>
+                <button onClick={cancelContractForm} className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-5 py-2.5 rounded-lg">
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
