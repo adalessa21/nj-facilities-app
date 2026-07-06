@@ -285,7 +285,15 @@ export default function Home() {
   // Auth state
   useEffect(() => {
     const authClient = createClient()
-    authClient.auth.getUser().then(({ data }) => setUser(data.user ?? null))
+    ;(async () => {
+      const { data: { session } } = await authClient.auth.getSession()
+      if (session?.user) {
+        setUser(session.user)
+      } else {
+        const { data: { user } } = await authClient.auth.getUser()
+        setUser(user)
+      }
+    })()
     const { data: { subscription } } = authClient.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
