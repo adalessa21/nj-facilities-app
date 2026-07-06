@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -266,6 +267,7 @@ export default function Home() {
 
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null)
   const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
 
   // Load initial data
   useEffect(() => {
@@ -278,6 +280,16 @@ export default function Home() {
       if (coops) setCooperatives(coops)
     }
     load()
+  }, [])
+
+  // Auth state
+  useEffect(() => {
+    const authClient = createClient()
+    authClient.auth.getUser().then(({ data }) => setUser(data.user ?? null))
+    const { data: { subscription } } = authClient.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
   }, [])
 
   // Load memberships when entity changes
@@ -638,7 +650,27 @@ export default function Home() {
       {/* Header */}
       <header className="bg-[#1F3864] text-white">
         <div className="max-w-4xl mx-auto px-4 py-5">
-          <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform · Beta</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs tracking-widest uppercase text-white/50">NJ Facilities Procurement Platform · Beta</div>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-white/50 hidden sm:block">{user.email}</span>
+                <button
+                  onClick={() => createClient().auth.signOut()}
+                  className="text-xs text-white/70 hover:text-white border border-white/30 hover:border-white/60 rounded px-2.5 py-1 transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="text-xs text-white/70 hover:text-white border border-white/30 hover:border-white/60 rounded px-2.5 py-1 transition-colors"
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
           <h1 className="text-xl font-bold">
             {selectedEntity
               ? <>Find qualified vendors at <span className="text-[#4ecba0]">{selectedEntity.name}</span></>
