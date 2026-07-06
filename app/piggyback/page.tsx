@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { supabaseAuth } from '@/lib/supabase-auth'
 import Link from 'next/link'
 
 const TRADES = [
@@ -37,6 +38,30 @@ export default function PiggybackSubmit() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
   const [selectedInstitutions, setSelectedInstitutions] = useState<string[]>([])
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: { session } } = await supabaseAuth.auth.getSession()
+      const user = session?.user ?? (await supabaseAuth.auth.getUser()).data.user
+      if (!user?.email) return
+
+      setUserEmail(user.email)
+      setForm(prev => ({ ...prev, submitter_email: user.email! }))
+
+      const domain = user.email.split('@')[1]
+      if (!domain) return
+      const { data: entity } = await supabase
+        .from('entities')
+        .select('name')
+        .eq('email_domain', domain)
+        .single()
+      if (entity) {
+        setForm(prev => ({ ...prev, institution_name: entity.name }))
+      }
+    }
+    checkAuth()
+  }, [])
 
   const [form, setForm] = useState({
     institution_name: '',
@@ -93,7 +118,7 @@ export default function PiggybackSubmit() {
       notes: form.notes || null,
       submitter_name: form.submitter_name,
       submitter_email: form.submitter_email,
-      approved_by_admin: false,
+      approved_by_admin: userEmail !== null,
     })
 
     setSaving(false)
@@ -118,9 +143,14 @@ export default function PiggybackSubmit() {
         <div className="max-w-3xl mx-auto px-4 py-12">
           <div className="bg-white border border-green-200 rounded-xl p-8 text-center">
             <div className="text-4xl mb-3">✓</div>
-            <h2 className="text-lg font-bold text-[#1F3864] mb-2">Submission received</h2>
+            <h2 className="text-lg font-bold text-[#1F3864] mb-2">
+              {userEmail ? 'Contract added' : 'Submission received'}
+            </h2>
             <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
-              Thank you — your contract has been submitted for review. It will appear on the platform once approved.
+              {userEmail
+                ? 'Your contract has been added to the platform.'
+                : 'Thank you — your contract has been submitted for review. It will appear on the platform once approved.'
+              }
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <button
@@ -170,13 +200,16 @@ export default function PiggybackSubmit() {
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Institution Name *</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
+                Institution Name *{userEmail && <span className="ml-1 text-teal-600 font-normal normal-case">· verified</span>}
+              </label>
               <input
                 type="text"
                 value={form.institution_name}
-                onChange={e => update('institution_name', e.target.value)}
+                onChange={e => !userEmail && update('institution_name', e.target.value)}
+                readOnly={!!userEmail}
                 placeholder="e.g. Rutgers University"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${userEmail ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-default' : 'border-gray-300 focus:ring-2 focus:ring-amber-400'}`}
               />
             </div>
             <div>
@@ -376,9 +409,10 @@ export default function PiggybackSubmit() {
               <input
                 type="email"
                 value={form.submitter_email}
-                onChange={e => update('submitter_email', e.target.value)}
+                onChange={e => !userEmail && update('submitter_email', e.target.value)}
+                readOnly={!!userEmail}
                 placeholder="e.g. jsmith@rutgers.edu"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${userEmail ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-default' : 'border-gray-300 focus:ring-2 focus:ring-amber-400'}`}
               />
             </div>
           </div>
@@ -388,7 +422,7 @@ export default function PiggybackSubmit() {
             disabled={saving}
             className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold px-6 py-2.5 rounded-lg"
           >
-            {saving ? 'Submitting...' : 'Submit Contract for Review'}
+            {saving ? 'Submitting...' : userEmail ? 'Add to Platform' : 'Submit Contract for Review'}
           </button>
         </form>
       </div>
