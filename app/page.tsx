@@ -347,9 +347,6 @@ export default function Home() {
       if (!skipCoopQuery) {
         if (coopIdsForQuery !== null) q = q.in('cooperative_id', coopIdsForQuery)
         if (selectedTrades.length > 0) q = q.in('trade_category', selectedTrades)
-        if (query.trim()) {
-          q = q.or(`contract_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%`)
-        }
 
         const { data, error } = await q
         if (error) console.error(error)
@@ -394,9 +391,6 @@ export default function Home() {
         .gte('expiration_date', new Date().toISOString().split('T')[0])
 
       if (selectedTrades.length > 0) iq = iq.in('trade_category', selectedTrades)
-      if (query.trim()) {
-        iq = iq.or(`vendor_name.ilike.%${query}%,contract_number.ilike.%${query}%,trade_category.ilike.%${query}%,institution_name.ilike.%${query}%`)
-      }
 
       const { data: instData } = await iq
 
@@ -435,8 +429,18 @@ export default function Home() {
     }
 
     const now = Date.now()
+    const q = query.trim().toLowerCase()
     const result = Object.values(grouped)
       .filter(c => new Date(c.expiration_date).getTime() >= now)
+      .filter(c => {
+        if (!q) return true
+        return (
+          c.contract_name?.toLowerCase().includes(q) ||
+          c.contract_number?.toLowerCase().includes(q) ||
+          c.trade_category?.toLowerCase().includes(q) ||
+          c.vendorList.some(v => v.company_name?.toLowerCase().includes(q))
+        )
+      })
     result.sort((a, b) => {
       const tradeOrder = a.trade_category.localeCompare(b.trade_category)
       if (tradeOrder !== 0) return tradeOrder
@@ -552,7 +556,7 @@ export default function Home() {
         {!!(c as any).source_url && (
           <div className="mb-2">
             <a href={(c as any).source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2">
-              📋 View source document →
+              View on {coopAbbr === 'NJ State' ? 'NJ State Contract' : coopAbbr} →
             </a>
           </div>
         )}
@@ -636,7 +640,10 @@ export default function Home() {
         <div className="max-w-4xl mx-auto px-4 py-5">
           <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform · Beta</div>
           <h1 className="text-xl font-bold">
-            Can <span className="text-[#4ecba0]">{selectedEntity?.name || 'your institution'}</span> use this vendor?
+            {selectedEntity
+              ? <>Find qualified vendors at <span className="text-[#4ecba0]">{selectedEntity.name}</span></>
+              : 'Find qualified vendors across NJ'
+            }
           </h1>
           <p className="text-white/60 text-sm mt-1">
             ESCNJ · NJ State Contract · Sourcewell · OMNIA · Bergen Co-op · Hunterdon ESC · NASPO · NJ Edge
