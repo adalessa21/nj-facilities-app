@@ -1,6 +1,3 @@
-import { createBrowserClient } from '@supabase/ssr'
-
-export const supabaseAuth = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// Re-export from the single consolidated client so imports of
+// lib/supabase-auth keep working without any call-site changes.
+export { supabaseAuth } from './supabase'
