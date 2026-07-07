@@ -39,6 +39,7 @@ export default function PiggybackSubmit() {
   const [error, setError] = useState('')
   const [selectedInstitutions, setSelectedInstitutions] = useState<string[]>([])
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [entityId, setEntityId] = useState<string | null>(null)
 
   useEffect(() => {
     async function checkAuth() {
@@ -53,10 +54,11 @@ export default function PiggybackSubmit() {
       if (!domain) return
       const { data: entity } = await supabase
         .from('entities')
-        .select('name')
+        .select('id, name')
         .eq('email_domain', domain)
         .single()
       if (entity) {
+        setEntityId(entity.id)
         setForm(prev => ({ ...prev, institution_name: entity.name }))
       }
     }
@@ -106,6 +108,7 @@ export default function PiggybackSubmit() {
 
     const { error: insertError } = await supabase.from('institution_contracts').insert({
       institution_name: form.institution_name,
+      entity_id: entityId,
       vendor_name: form.vendor_name,
       trade_category: form.trade_category,
       contract_number: form.contract_number || null,
@@ -118,7 +121,6 @@ export default function PiggybackSubmit() {
       notes: form.notes || null,
       submitter_name: form.submitter_name,
       submitter_email: form.submitter_email,
-      approved_by_admin: userEmail !== null,
     })
 
     setSaving(false)

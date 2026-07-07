@@ -123,7 +123,9 @@ export default function MyInstitutionPage() {
       const [{ data: coops }, { data: memberships }, { data: contracts }] = await Promise.all([
         supabase.from('cooperatives').select('id, name, abbreviation, display_color').order('name'),
         supabase.from('memberships').select('cooperative_id').eq('entity_id', entityData.id),
-        supabase.from('institution_contracts').select('*').eq('institution_name', entityData.name).order('expiration_date', { ascending: true }),
+        supabase.from('institution_contracts').select('*')
+          .or(`entity_id.eq.${entityData.id},and(entity_id.is.null,institution_name.eq.${entityData.name})`)
+          .order('expiration_date', { ascending: true }),
       ])
 
       if (coops) setCooperatives(coops)
@@ -136,11 +138,11 @@ export default function MyInstitutionPage() {
     init()
   }, [router])
 
-  async function reloadContracts(entityName: string) {
+  async function reloadContracts(entityId: string, entityName: string) {
     const { data } = await supabase
       .from('institution_contracts')
       .select('*')
-      .eq('institution_name', entityName)
+      .or(`entity_id.eq.${entityId},and(entity_id.is.null,institution_name.eq.${entityName})`)
       .order('expiration_date', { ascending: true })
     if (data) setMyContracts(data)
   }
@@ -219,6 +221,7 @@ export default function MyInstitutionPage() {
 
     const payload = {
       institution_name: entity.name,
+      entity_id: entity.id,
       vendor_name: contractForm.vendor_name,
       trade_category: contractForm.trade_category,
       contract_number: contractForm.contract_number || null,
@@ -229,7 +232,6 @@ export default function MyInstitutionPage() {
       authorized_users: contractForm.authorized_users || null,
       insurance_requirements: contractForm.insurance_requirements || null,
       notes: contractForm.notes || null,
-      approved_by_admin: true,
     }
 
     let error
@@ -244,7 +246,7 @@ export default function MyInstitutionPage() {
 
     setContractMessage('✓ Contract saved successfully.')
     cancelContractForm()
-    await reloadContracts(entity.name)
+    await reloadContracts(entity.id, entity.name)
   }
 
   async function deleteContract(id: string, vendorName: string) {
@@ -252,7 +254,7 @@ export default function MyInstitutionPage() {
     const { error } = await supabase.from('institution_contracts').delete().eq('id', id)
     if (error) { setContractMessage('Error: ' + error.message); return }
     setContractMessage('✓ Contract deleted.')
-    if (entity) await reloadContracts(entity.name)
+    if (entity) await reloadContracts(entity.id, entity.name)
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
