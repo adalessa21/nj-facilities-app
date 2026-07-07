@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
 import Link from 'next/link'
 
 const TRADES = [
@@ -104,19 +104,13 @@ export default function AdminInstitutionContracts() {
 
   async function loadData() {
     setLoading(true)
-    const { data } = await supabase
-      .from('institution_contracts')
-      .select('*')
-      .order('created_at', { ascending: false })
+    const { data } = await adminGet<InstitutionContract>('institution_contracts', { order: 'created_at', asc: false })
     if (data) setContracts(data)
     setLoading(false)
   }
 
   async function approve(id: string) {
-    const { error } = await supabase
-      .from('institution_contracts')
-      .update({ approved_by_admin: true })
-      .eq('id', id)
+    const { error } = await adminUpdate('institution_contracts', { id }, { approved_by_admin: true })
     if (error) { setMessage('Error: ' + error.message); return }
     setMessage('✓ Contract approved and now visible on the platform.')
     loadData()
@@ -124,10 +118,7 @@ export default function AdminInstitutionContracts() {
 
   async function reject(id: string, name: string) {
     if (!confirm(`Reject and delete "${name}"? This cannot be undone.`)) return
-    const { error } = await supabase
-      .from('institution_contracts')
-      .delete()
-      .eq('id', id)
+    const { error } = await adminDelete('institution_contracts', { id })
     if (error) { setMessage('Error: ' + error.message); return }
     setMessage('✓ Contract rejected and removed.')
     if (editingId === id) cancelForm()
@@ -207,24 +198,22 @@ export default function AdminInstitutionContracts() {
       return
     }
     setSaving(true)
-    const { error } = await supabase
-      .from('institution_contracts')
-      .update({
-        institution_name: editForm.institution_name,
-        vendor_name: editForm.vendor_name,
-        trade_category: editForm.trade_category,
-        contract_number: editForm.contract_number || null,
-        start_date: editForm.start_date || null,
-        expiration_date: editForm.expiration_date,
-        piggyback_allowed: editForm.piggyback_allowed,
-        authorized_users: buildAuthorizedUsersValue(),
-        piggyback_language: editForm.piggyback_language || null,
-        insurance_requirements: editForm.insurance_requirements || null,
-        notes: editForm.notes || null,
-        submitter_name: editForm.submitter_name || null,
-        submitter_email: editForm.submitter_email || null,
-      })
-      .eq('id', editingId!)
+    const updatePayload = {
+      institution_name: editForm.institution_name,
+      vendor_name: editForm.vendor_name,
+      trade_category: editForm.trade_category,
+      contract_number: editForm.contract_number || null,
+      start_date: editForm.start_date || null,
+      expiration_date: editForm.expiration_date,
+      piggyback_allowed: editForm.piggyback_allowed,
+      authorized_users: buildAuthorizedUsersValue(),
+      piggyback_language: editForm.piggyback_language || null,
+      insurance_requirements: editForm.insurance_requirements || null,
+      notes: editForm.notes || null,
+      submitter_name: editForm.submitter_name || null,
+      submitter_email: editForm.submitter_email || null,
+    }
+    const { error } = await adminUpdate('institution_contracts', { id: editingId! }, updatePayload)
     setSaving(false)
     if (error) { setMessage('Error: ' + error.message); return }
     setMessage('✓ Contract updated successfully.')
@@ -242,24 +231,22 @@ export default function AdminInstitutionContracts() {
       return
     }
     setSaving(true)
-    const { error } = await supabase
-      .from('institution_contracts')
-      .insert({
-        institution_name: editForm.institution_name,
-        vendor_name: editForm.vendor_name,
-        trade_category: editForm.trade_category,
-        contract_number: editForm.contract_number || null,
-        start_date: editForm.start_date || null,
-        expiration_date: editForm.expiration_date,
-        piggyback_allowed: editForm.piggyback_allowed,
-        authorized_users: buildAuthorizedUsersValue(),
-        piggyback_language: editForm.piggyback_language || null,
-        insurance_requirements: editForm.insurance_requirements || null,
-        notes: editForm.notes || null,
-        submitter_name: editForm.submitter_name || null,
-        submitter_email: editForm.submitter_email || null,
-        approved_by_admin: false,
-      })
+    const insertPayload = {
+      institution_name: editForm.institution_name,
+      vendor_name: editForm.vendor_name,
+      trade_category: editForm.trade_category,
+      contract_number: editForm.contract_number || null,
+      start_date: editForm.start_date || null,
+      expiration_date: editForm.expiration_date,
+      piggyback_allowed: editForm.piggyback_allowed,
+      authorized_users: buildAuthorizedUsersValue(),
+      piggyback_language: editForm.piggyback_language || null,
+      insurance_requirements: editForm.insurance_requirements || null,
+      notes: editForm.notes || null,
+      submitter_name: editForm.submitter_name || null,
+      submitter_email: editForm.submitter_email || null,
+    }
+    const { error } = await adminInsert('institution_contracts', insertPayload)
     setSaving(false)
     if (error) { setMessage('Error: ' + error.message); return }
     setMessage('✓ Contract added and is now in the pending queue.')

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { adminGet, adminInsert, adminDelete } from '@/lib/admin-client'
 import Link from 'next/link'
 
 interface Membership {
@@ -40,11 +40,11 @@ export default function AdminMemberships() {
   async function loadData() {
     setLoading(true)
     const [{ data: m }, { data: e }, { data: c }] = await Promise.all([
-      supabase.from('memberships').select('*, entities(name), cooperatives(name, abbreviation)').order('cooperative_id'),
-      supabase.from('entities').select('id, name, type').order('type').order('name'),
-      supabase.from('cooperatives').select('id, name, abbreviation').order('name'),
+      adminGet<Membership>('memberships', { select: '*,entities(name),cooperatives(name,abbreviation)', order: 'cooperative_id' }),
+      adminGet<Entity>('entities', { select: 'id,name,type', order: 'name' }),
+      adminGet<Coop>('cooperatives', { select: 'id,name,abbreviation', order: 'name' }),
     ])
-    if (m) setMemberships(m as unknown as Membership[])
+    if (m) setMemberships(m)
     if (e) setEntities(e)
     if (c) setCoops(c)
     setLoading(false)
@@ -85,7 +85,7 @@ export default function AdminMemberships() {
     setSaving(true); setMessage('')
 
     // Delete existing memberships for this entity
-    await supabase.from('memberships').delete().eq('entity_id', selectedEntityId)
+    await adminDelete('memberships', { eq: { entity_id: selectedEntityId } })
 
     // Insert new ones
     const inserts = selectedCoopIds.map(coopId => ({
@@ -95,7 +95,7 @@ export default function AdminMemberships() {
       verified_by: bulkVerifiedBy,
     }))
 
-    const { error } = await supabase.from('memberships').insert(inserts)
+    const { error } = await adminInsert('memberships', inserts)
     if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
 
     setMessage(`✓ Saved ${inserts.length} membership${inserts.length !== 1 ? 's' : ''} for ${entities.find(e => e.id === selectedEntityId)?.name}`)
@@ -106,7 +106,7 @@ export default function AdminMemberships() {
 
   async function deleteMembership(id: string) {
     if (!confirm('Delete this membership?')) return
-    const { error } = await supabase.from('memberships').delete().eq('id', id)
+    const { error } = await adminDelete('memberships', { id })
     if (error) { alert('Error: ' + error.message); return }
     loadData()
   }

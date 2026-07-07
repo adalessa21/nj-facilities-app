@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
 import Link from 'next/link'
 
 interface Contract {
@@ -77,14 +77,11 @@ const emptyForm = {
   async function loadData() {
     setLoading(true)
     const [{ data: c }, { data: v }, { data: co }] = await Promise.all([
-      supabase
-        .from('contracts')
-        .select('*, vendors(company_name), cooperatives(name, abbreviation)')
-        .order('expiration_date', { ascending: true }),
-      supabase.from('vendors').select('id, company_name').order('company_name'),
-      supabase.from('cooperatives').select('id, name, abbreviation').order('name'),
+      adminGet<Contract>('contracts', { select: '*,vendors(company_name),cooperatives(name,abbreviation)', order: 'expiration_date' }),
+      adminGet<Vendor>('vendors', { select: 'id,company_name', order: 'company_name' }),
+      adminGet<Coop>('cooperatives', { select: 'id,name,abbreviation', order: 'name' }),
     ])
-    if (c) setContracts(c as unknown as Contract[])
+    if (c) setContracts(c)
     if (v) setVendors(v)
     if (co) setCoops(co)
     setLoading(false)
@@ -168,7 +165,7 @@ const emptyForm = {
 
     // If editing, delete old contract rows for this group first
     if (editingGroup) {
-      await supabase.from('contracts').delete().in('id', editingGroup.contractIds)
+      await adminDelete('contracts', { ids: editingGroup.contractIds })
     }
 
     // Insert one row per vendor
@@ -184,7 +181,7 @@ const emptyForm = {
       source_url: form.source_url || null,
     }))
 
-    const { error } = await supabase.from('contracts').insert(inserts)
+    const { error } = await adminInsert('contracts', inserts)
     if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
 
     setMessage(`✓ Contract saved with ${inserts.length} vendor${inserts.length !== 1 ? 's' : ''}`)
@@ -195,7 +192,7 @@ const emptyForm = {
 
   async function deleteGroup(group: GroupedContractRow) {
     if (!confirm(`Delete "${group.contract_name}" and all ${group.contractIds.length} vendor rows? This cannot be undone.`)) return
-    const { error } = await supabase.from('contracts').delete().in('id', group.contractIds)
+    const { error } = await adminDelete('contracts', { ids: group.contractIds })
     if (error) { alert('Error: ' + error.message); return }
     loadData()
   }
@@ -205,10 +202,7 @@ const emptyForm = {
     const current = new Date(group.expiration_date)
     current.setFullYear(current.getFullYear() + 1)
     const newDate = current.toISOString().split('T')[0]
-    const { error } = await supabase
-      .from('contracts')
-      .update({ expiration_date: newDate, status: 'extended' })
-      .in('id', group.contractIds)
+    const { error } = await adminUpdate('contracts', { ids: group.contractIds }, { expiration_date: newDate, status: 'extended' })
     if (error) { alert('Error: ' + error.message); return }
     setMessage(`✓ Extended "${group.contract_name}" to ${newDate}`)
     loadData()

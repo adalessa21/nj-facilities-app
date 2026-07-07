@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
 import Link from 'next/link'
 
 interface Cooperative {
@@ -34,7 +34,7 @@ export default function AdminCooperatives() {
 
   async function loadData() {
     setLoading(true)
-    const { data } = await supabase.from('cooperatives').select('*').order('name')
+    const { data } = await adminGet<Cooperative>('cooperatives', { order: 'name' })
     if (data) setCoops(data)
     setLoading(false)
   }
@@ -54,11 +54,11 @@ export default function AdminCooperatives() {
     if (!form.name) { setMessage('Name is required.'); return }
     setSaving(true); setMessage('')
     if (editingCoop) {
-      const { error } = await supabase.from('cooperatives').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editingCoop.id)
+      const { error } = await adminUpdate('cooperatives', { id: editingCoop.id }, { ...form, updated_at: new Date().toISOString() })
       if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
       setMessage('✓ Cooperative updated successfully')
     } else {
-      const { error } = await supabase.from('cooperatives').insert(form)
+      const { error } = await adminInsert('cooperatives', form)
       if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
       setMessage('✓ Cooperative added successfully')
     }
@@ -67,7 +67,7 @@ export default function AdminCooperatives() {
 
   async function deleteCoop(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This will remove all contracts and memberships linked to it. This cannot be undone.`)) return
-    const { error } = await supabase.from('cooperatives').delete().eq('id', id)
+    const { error } = await adminDelete('cooperatives', { id })
     if (error) { alert('Error: ' + error.message); return }
     loadData()
   }

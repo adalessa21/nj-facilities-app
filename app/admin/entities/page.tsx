@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
 import Link from 'next/link'
 
 interface Entity {
@@ -52,7 +52,7 @@ export default function AdminEntities() {
 
   async function loadData() {
     setLoading(true)
-    const { data } = await supabase.from('entities').select('*').order('type').order('name')
+    const { data } = await adminGet<Entity>('entities', { order: 'name' })
     if (data) setEntities(data)
     setLoading(false)
   }
@@ -74,11 +74,11 @@ export default function AdminEntities() {
     if (!form.name || !form.type) { setMessage('Name and type are required.'); return }
     setSaving(true); setMessage('')
     if (editingEntity) {
-      const { error } = await supabase.from('entities').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editingEntity.id)
+      const { error } = await adminUpdate('entities', { id: editingEntity.id }, { ...form, updated_at: new Date().toISOString() })
       if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
       setMessage('✓ Institution updated successfully')
     } else {
-      const { error } = await supabase.from('entities').insert(form)
+      const { error } = await adminInsert('entities', form)
       if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
       setMessage('✓ Institution added successfully')
     }
@@ -87,7 +87,7 @@ export default function AdminEntities() {
 
   async function deleteEntity(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
-    const { error } = await supabase.from('entities').delete().eq('id', id)
+    const { error } = await adminDelete('entities', { id })
     if (error) { alert('Error: ' + error.message); return }
     loadData()
   }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
 import Link from 'next/link'
 
 interface Vendor {
@@ -46,10 +46,7 @@ export default function AdminVendors() {
 
   async function loadData() {
     setLoading(true)
-    const { data } = await supabase
-      .from('vendors')
-      .select('*')
-      .order('company_name')
+    const { data } = await adminGet<Vendor>('vendors', { order: 'company_name' })
     if (data) setVendors(data)
     setLoading(false)
   }
@@ -87,14 +84,11 @@ export default function AdminVendors() {
     setSaving(true)
     setMessage('')
     if (editingVendor) {
-      const { error } = await supabase
-        .from('vendors')
-        .update({ ...form, updated_at: new Date().toISOString() })
-        .eq('id', editingVendor.id)
+      const { error } = await adminUpdate('vendors', { id: editingVendor.id }, { ...form, updated_at: new Date().toISOString() })
       if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
       setMessage('✓ Vendor updated successfully')
     } else {
-      const { error } = await supabase.from('vendors').insert(form)
+      const { error } = await adminInsert('vendors', form)
       if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
       setMessage('✓ Vendor added successfully')
     }
@@ -105,7 +99,7 @@ export default function AdminVendors() {
 
   async function deleteVendor(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This will also delete all their contracts. This cannot be undone.`)) return
-    const { error } = await supabase.from('vendors').delete().eq('id', id)
+    const { error } = await adminDelete('vendors', { id })
     if (error) { alert('Error: ' + error.message); return }
     loadData()
   }
