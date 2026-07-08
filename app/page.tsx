@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabase-auth'
 import Link from 'next/link'
+import { parseLocalDate, formatDate, daysUntil, localToday } from '@/lib/dates'
+import { normalizeUrl } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Entity {
@@ -90,9 +92,6 @@ function CoopBadge({ abbr }: { abbr: string }) {
   )
 }
 
-function daysUntil(dateStr: string) {
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000)
-}
 
 // ── Vendor Detail Panel ───────────────────────────────────────────────────────
 function VendorPanel({
@@ -100,12 +99,14 @@ function VendorPanel({
   contracts,
   entityMemberships,
   entityName,
+  onViewLanguage,
   onClose,
 }: {
   vendor: Vendor
   contracts: GroupedContract[]
   entityMemberships: string[]
   entityName?: string
+  onViewLanguage: (text: string) => void
   onClose: () => void
 }) {
   const allVendorContracts = contracts.filter(c =>
@@ -154,7 +155,7 @@ function VendorPanel({
               </a>
             )}
             {vendor.website && (
-              <a href={`https://${vendor.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-gray-50 px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100">
+              <a href={normalizeUrl(vendor.website)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs bg-gray-50 px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100">
                 🌐 {vendor.website}
               </a>
             )}
@@ -170,7 +171,7 @@ function VendorPanel({
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Contracts your institution can use</div>
               {eligible.map(c => {
                 const days = daysUntil(c.expiration_date)
-                const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                const exp = formatDate(c.expiration_date)
                 const isShared = c.coop?.abbreviation === 'Shared Contract'
                 return (
                   <div key={c.id} className="flex items-start justify-between mb-3 pb-3 border-b border-gray-100 last:border-0">
@@ -193,7 +194,7 @@ function VendorPanel({
                       {isShared ? (
                         c.piggyback_language && (
                           <button
-                            onClick={() => alert(c.piggyback_language)}
+                            onClick={() => onViewLanguage(c.piggyback_language!)}
                             className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2 mt-1 block"
                           >
                             View authorization language →
@@ -256,16 +257,18 @@ function VendorPanel({
 export default function Home() {
   const [entities, setEntities] = useState<Entity[]>([])
   const [cooperatives, setCooperatives] = useState<Cooperative[]>([])
-  const [groupedContracts, setGroupedContracts] = useState<GroupedContract[]>([])
+  const [allContracts, setAllContracts] = useState<GroupedContract[]>([])
   const [trades, setTrades] = useState<string[]>([])
 
   const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null)
   const [entityMemberships, setEntityMemberships] = useState<string[]>([])
+  const [membershipsLoaded, setMembershipsLoaded] = useState(false)
   const [selectedTrades, setSelectedTrades] = useState<string[]>([])
   const [selectedCoops, setSelectedCoops] = useState<string[]>([])
   const [query, setQuery] = useState('')
 
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null)
+  const [piggybackModal, setPiggybackModal] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [autoDetected, setAutoDetected] = useState(false)
@@ -323,8 +326,10 @@ export default function Home() {
   useEffect(() => {
     if (!selectedEntity) {
       setEntityMemberships([])
+      setMembershipsLoaded(false)
       return
     }
+    setMembershipsLoaded(false)
     async function loadMemberships() {
       const { data } = await supabase
         .from('memberships')
@@ -332,14 +337,16 @@ export default function Home() {
         .eq('entity_id', selectedEntity!.id)
         .eq('status', 'confirmed')
       if (data) setEntityMemberships(data.map((m: Membership) => m.cooperative_id))
+      setMembershipsLoaded(true) // done even if zero results
     }
     loadMemberships()
   }, [selectedEntity])
 
-  // Search and group contracts
+  // Fetch contracts from Supabase — runs only when entity/memberships/coops/trades change.
+  // Text query is applied as a client-side filter in useMemo below (no network on keystrokes).
   const search = useCallback(async () => {
-    // Entity selected but memberships not yet loaded — wait for them
-    if (selectedEntity && entityMemberships.length === 0) {
+    // Entity selected but memberships not yet fetched — wait for the memberships effect
+    if (selectedEntity && !membershipsLoaded) {
       setLoading(true)
       return
     }
@@ -365,20 +372,13 @@ export default function Home() {
         .in('status', ['active', 'extended'])
         .order('expiration_date', { ascending: true })
 
-      // Determine which co-op IDs to filter by
       let coopIdsForQuery: string[] | null = null
       if (selectedEntity) {
-        // Intersect selected co-ops with entity's memberships
         coopIdsForQuery = realCoopFilters.length > 0
           ? realCoopFilters.filter(id => entityMemberships.includes(id))
           : entityMemberships
-        // Entity has no relevant memberships — skip co-op query
-        if (coopIdsForQuery.length === 0) {
-          coopIdsForQuery = null
-          showCoopContracts && Object.assign(grouped, {}) // no-op, just skip below
-        }
+        if (coopIdsForQuery.length === 0) coopIdsForQuery = null
       } else {
-        // No entity: filter to selected co-ops or show all
         coopIdsForQuery = realCoopFilters.length > 0 ? realCoopFilters : null
       }
 
@@ -427,7 +427,7 @@ export default function Home() {
         .select('*')
         .eq('approved_by_admin', true)
         .eq('piggyback_allowed', true)
-        .gte('expiration_date', new Date().toISOString().split('T')[0])
+        .gte('expiration_date', localToday()) // local date avoids UTC-midnight cutoff
 
       if (selectedTrades.length > 0) iq = iq.in('trade_category', selectedTrades)
 
@@ -467,36 +467,34 @@ export default function Home() {
       })
     }
 
-    const now = Date.now()
-    const q = query.trim().toLowerCase()
     const result = Object.values(grouped)
-      .filter(c => new Date(c.expiration_date).getTime() >= now)
-      .filter(c => {
-        if (!q) return true
-        return (
-          c.contract_name?.toLowerCase().includes(q) ||
-          c.contract_number?.toLowerCase().includes(q) ||
-          c.trade_category?.toLowerCase().includes(q) ||
-          c.vendorList.some(v => v.company_name?.toLowerCase().includes(q))
-        )
-      })
+      .filter(c => daysUntil(c.expiration_date) >= 0) // keep expiry day itself
     result.sort((a, b) => {
       const tradeOrder = a.trade_category.localeCompare(b.trade_category)
       if (tradeOrder !== 0) return tradeOrder
-      // Within the same trade: longest remaining first (descending expiration)
-      return new Date(b.expiration_date).getTime() - new Date(a.expiration_date).getTime()
+      return parseLocalDate(b.expiration_date).getTime() - parseLocalDate(a.expiration_date).getTime()
     })
-    setGroupedContracts(result)
-    // Only refresh the chip list when no trade filter is active — prevents the list
-    // collapsing to just selected trades when filters narrow the result set
+    setAllContracts(result)
     if (selectedTrades.length === 0) {
       const uniqueTrades = [...new Set(result.map(c => c.trade_category))].sort()
       setTrades(uniqueTrades)
     }
     setLoading(false)
-  }, [selectedEntity, entityMemberships, selectedTrades, selectedCoops, query])
+  }, [selectedEntity, entityMemberships, membershipsLoaded, selectedTrades, selectedCoops])
 
   useEffect(() => { search() }, [search])
+
+  // Client-side text filter — no network request on keystrokes
+  const groupedContracts = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return allContracts
+    return allContracts.filter(c =>
+      c.contract_name?.toLowerCase().includes(q) ||
+      c.contract_number?.toLowerCase().includes(q) ||
+      c.trade_category?.toLowerCase().includes(q) ||
+      c.vendorList.some(v => v.company_name?.toLowerCase().includes(q))
+    )
+  }, [allContracts, query])
 
   // Grouped entities for dropdown
   const groupedEntities = {
@@ -504,8 +502,6 @@ export default function Home() {
     county_college: entities.filter(e => e.type === 'county_college'),
     county_gov: entities.filter(e => e.type === 'county_gov'),
   }
-
-  const today = new Date()
 
   // Stats (reflect current filtered view)
   const vendorSet = new Set(groupedContracts.flatMap(c => c.vendorList.map(v => v.id)))
@@ -528,12 +524,12 @@ export default function Home() {
 
   function renderCard(c: GroupedContract) {
     const days = daysUntil(c.expiration_date)
-    const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const exp = formatDate(c.expiration_date)
     const isPending = c.vendorList.length === 0 || c.vendorList[0]?.company_name?.startsWith('[')
     const coopAbbr = c.coop?.abbreviation || ''
     const coopLabel = coopAbbr === 'NJ State' ? 'NJ State Contract' : coopAbbr
     const isLead = isLeadContract(c)
-    const isExpired = days <= 0
+    const isExpired = days < 0  // expiration day itself is still valid
     const isExpiringSoon = !isExpired && days <= 180
     const badgeClass = isExpired
       ? 'bg-red-100 text-red-700'
@@ -586,8 +582,9 @@ export default function Home() {
           <span>📄 {c.contract_number}</span>
           <span>
             📅 Expires {exp}
-            {days < 180 && days > 0 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
-            {days <= 0 && <span className="text-red-600 font-medium"> · EXPIRED</span>}
+            {days === 0 && <span className="text-amber-600 font-medium"> · expires today</span>}
+            {days > 0 && days < 180 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
+            {days < 0 && <span className="text-red-600 font-medium"> · EXPIRED</span>}
           </span>
         </div>
 
@@ -633,10 +630,10 @@ export default function Home() {
                 <span>{selectedEntity.name} can use this via {c.institution_name} — shared on-call contract</span>
                 {c.piggyback_language && (
                   <button
-                    onClick={() => alert(c.piggyback_language)}
+                    onClick={() => setPiggybackModal(c.piggyback_language!)}
                     className="ml-auto text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
                   >
-                    View piggyback language →
+                    View authorization language →
                   </button>
                 )}
               </div>
@@ -896,8 +893,37 @@ export default function Home() {
           contracts={groupedContracts}
           entityMemberships={entityMemberships}
           entityName={selectedEntity?.name}
+          onViewLanguage={text => setPiggybackModal(text)}
           onClose={() => setSelectedVendor(null)}
         />
+      )}
+
+      {/* Authorization language modal */}
+      {piggybackModal !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setPiggybackModal(null)}>
+          <div className="bg-white rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-4 rounded-t-xl flex items-center justify-between">
+              <h2 className="text-base font-bold text-[#1F3864]">Authorization Language</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigator.clipboard.writeText(piggybackModal)}
+                  className="text-xs text-teal-600 hover:text-teal-800 border border-teal-200 hover:border-teal-400 rounded px-2.5 py-1 transition-colors"
+                >
+                  Copy
+                </button>
+                <button
+                  onClick={() => setPiggybackModal(null)}
+                  className="text-gray-400 hover:text-gray-600 border border-gray-200 rounded px-2 py-0.5 text-sm"
+                >
+                  ✕ Close
+                </button>
+              </div>
+            </div>
+            <div className="px-5 py-4 overflow-y-auto">
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap select-text">{piggybackModal}</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

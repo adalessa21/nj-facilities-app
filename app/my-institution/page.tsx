@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabase-auth'
+import { formatDate, daysUntil } from '@/lib/dates'
 import Link from 'next/link'
 
 const TRADES = [
@@ -274,9 +275,6 @@ export default function MyInstitutionPage() {
 
   const hasCoopChanges = selectedCoopIds.length !== originalCoopIds.length || selectedCoopIds.some(id => !originalCoopIds.includes(id))
 
-  function daysUntil(d: string) {
-    return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -377,7 +375,7 @@ export default function MyInstitutionPage() {
                 <tbody>
                   {myContracts.map((c, i) => {
                     const days = daysUntil(c.expiration_date)
-                    const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    const exp = formatDate(c.expiration_date)
                     const isEditing = editingContractId === c.id
                     return (
                       <tr key={c.id} className={`border-b border-gray-100 ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-amber-50/40' : ''}`}>
@@ -388,8 +386,9 @@ export default function MyInstitutionPage() {
                         <td className="px-4 py-3 text-gray-600 text-xs">{c.trade_category}</td>
                         <td className="px-4 py-3">
                           <div className="text-gray-600 text-xs">{exp}</div>
-                          {days < 90 && days > 0 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
-                          {days <= 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
+                          {days === 0 && <div className="text-xs text-amber-600 font-medium">expires today</div>}
+                          {days > 0 && days < 90 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
+                          {days < 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs font-semibold px-2 py-1 rounded-full ${c.piggyback_allowed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
+import { parseLocalDate, formatDate, daysUntil, dateToString } from '@/lib/dates'
 import Link from 'next/link'
 
 interface Contract {
@@ -202,9 +203,9 @@ const emptyForm = {
 
   // Quick extend by 1 year
   async function extendOneYear(group: GroupedContractRow) {
-    const current = new Date(group.expiration_date)
+    const current = parseLocalDate(group.expiration_date)
     current.setFullYear(current.getFullYear() + 1)
-    const newDate = current.toISOString().split('T')[0]
+    const newDate = dateToString(current)
     const { error } = await adminUpdate('contracts', { ids: group.contractIds }, { expiration_date: newDate, status: 'extended' })
     if (error) { alert('Error: ' + error.message); return }
     setMessage(`✓ Extended "${group.contract_name}" to ${newDate}`)
@@ -228,9 +229,6 @@ const emptyForm = {
     !vendorSearch || v.company_name.toLowerCase().includes(vendorSearch.toLowerCase())
   )
 
-  function daysUntil(d: string) {
-    return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -469,7 +467,7 @@ const emptyForm = {
               <tbody>
                 {filtered.map((g, i) => {
                   const days = daysUntil(g.expiration_date)
-                  const exp = new Date(g.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  const exp = formatDate(g.expiration_date)
                   return (
                     <tr key={`${g.contract_number}-${g.cooperative_id}`} className={`border-b border-gray-100 hover:bg-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
                       <td className="px-4 py-3">
@@ -494,8 +492,9 @@ const emptyForm = {
                       <td className="px-4 py-3 text-gray-600">{g.trade_category}</td>
                       <td className="px-4 py-3">
                         <div className="text-gray-600">{exp}</div>
-                        {days < 90 && days > 0 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
-                        {days <= 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
+                        {days === 0 && <div className="text-xs text-amber-600 font-medium">expires today</div>}
+                        {days > 0 && days < 90 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
+                        {days < 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold px-2 py-1 rounded-full ${

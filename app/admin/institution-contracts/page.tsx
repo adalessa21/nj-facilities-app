@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
+import { formatDate, daysUntil } from '@/lib/dates'
 import Link from 'next/link'
 
 const TRADES = [
@@ -262,9 +263,6 @@ export default function AdminInstitutionContracts() {
 
   const pendingCount = contracts.filter(c => !c.approved_by_admin).length
 
-  function daysUntil(d: string) {
-    return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)
-  }
 
   const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400'
   const labelCls = 'text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1'
@@ -506,8 +504,8 @@ export default function AdminInstitutionContracts() {
               <tbody>
                 {filtered.map((c, i) => {
                   const days = daysUntil(c.expiration_date)
-                  const exp = new Date(c.expiration_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                  const start = c.start_date ? new Date(c.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
+                  const exp = formatDate(c.expiration_date)
+                  const start = c.start_date ? formatDate(c.start_date) : '—'
                   const isExpanded = expandedId === c.id
                   const isEditing = editingId === c.id
 
@@ -528,8 +526,9 @@ export default function AdminInstitutionContracts() {
                       <td className="px-4 py-3 text-gray-600">{c.trade_category}</td>
                       <td className="px-4 py-3">
                         <div className="text-gray-600 text-xs">{start} — {exp}</div>
-                        {days < 90 && days > 0 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
-                        {days <= 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
+                        {days === 0 && <div className="text-xs text-amber-600 font-medium">expires today</div>}
+                        {days > 0 && days < 90 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
+                        {days < 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold px-2 py-1 rounded-full ${c.piggyback_allowed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
