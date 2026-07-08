@@ -145,14 +145,9 @@ export default function PiggybackSubmit() {
         <div className="max-w-3xl mx-auto px-4 py-12">
           <div className="bg-white border border-green-200 rounded-xl p-8 text-center">
             <div className="text-4xl mb-3">✓</div>
-            <h2 className="text-lg font-bold text-[#1F3864] mb-2">
-              {userEmail ? 'Contract added' : 'Submission received'}
-            </h2>
+            <h2 className="text-lg font-bold text-[#1F3864] mb-2">Submission received</h2>
             <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
-              {userEmail
-                ? 'Your contract has been added to the platform.'
-                : 'Thank you — your contract has been submitted for review. It will appear on the platform once approved.'
-              }
+              Thank you — your contract has been submitted for review. It will appear on the platform once approved.
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <button
@@ -203,15 +198,15 @@ export default function PiggybackSubmit() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
-                Institution Name *{userEmail && <span className="ml-1 text-teal-600 font-normal normal-case">· verified</span>}
+                Institution Name *{entityId && <span className="ml-1 text-teal-600 font-normal normal-case">· verified</span>}
               </label>
               <input
                 type="text"
                 value={form.institution_name}
-                onChange={e => !userEmail && update('institution_name', e.target.value)}
-                readOnly={!!userEmail}
+                onChange={e => !entityId && update('institution_name', e.target.value)}
+                readOnly={!!entityId}
                 placeholder="e.g. Rutgers University"
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${userEmail ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-default' : 'border-gray-300 focus:ring-2 focus:ring-amber-400'}`}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${entityId ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-default' : 'border-gray-300 focus:ring-2 focus:ring-amber-400'}`}
               />
             </div>
             <div>
@@ -416,6 +411,9 @@ export default function PiggybackSubmit() {
                 placeholder="e.g. jsmith@rutgers.edu"
                 className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${userEmail ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-default' : 'border-gray-300 focus:ring-2 focus:ring-amber-400'}`}
               />
+              {userEmail && !entityId && (
+                <p className="text-xs text-amber-600 mt-1">Signed in as {userEmail} — no matching institution found for this email domain.</p>
+              )}
             </div>
           </div>
 
@@ -424,7 +422,7 @@ export default function PiggybackSubmit() {
             disabled={saving}
             className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold px-6 py-2.5 rounded-lg"
           >
-            {saving ? 'Submitting...' : userEmail ? 'Add to Platform' : 'Submit Contract for Review'}
+            {saving ? 'Submitting...' : 'Submit Contract for Review'}
           </button>
         </form>
       </div>

@@ -244,7 +244,10 @@ export default function MyInstitutionPage() {
     setSavingContract(false)
     if (error) { setContractMessage('Error: ' + error.message); return }
 
-    setContractMessage('✓ Contract saved successfully.')
+    setContractMessage(editingContractId
+      ? '✓ Contract updated. Changes will appear on the platform once reviewed by an admin.'
+      : '✓ Contract submitted for review. It will appear on the platform once approved by an admin.'
+    )
     cancelContractForm()
     await reloadContracts(entity.id, entity.name)
   }

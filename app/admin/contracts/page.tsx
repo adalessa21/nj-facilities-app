@@ -12,6 +12,7 @@ interface Contract {
   status: string
   expiration_date: string
   notes: string
+  source_url: string
   vendor_id: string
   cooperative_id: string
   vendors: { company_name: string }
@@ -37,11 +38,11 @@ interface GroupedContractRow {
   status: string
   expiration_date: string
   notes: string
+  source_url: string
   cooperative_id: string
   coopAbbr: string
   vendorNames: string[]
   contractIds: string[]
-  source_url?: string
 }
 
 export default function AdminContracts() {
@@ -100,6 +101,7 @@ const emptyForm = {
           status: c.status,
           expiration_date: c.expiration_date,
           notes: c.notes || '',
+          source_url: c.source_url || '',
           cooperative_id: c.cooperative_id,
           coopAbbr: c.cooperatives?.abbreviation || '',
           vendorNames: [],
@@ -165,7 +167,8 @@ const emptyForm = {
 
     // If editing, delete old contract rows for this group first
     if (editingGroup) {
-      await adminDelete('contracts', { ids: editingGroup.contractIds })
+      const { error: delError } = await adminDelete('contracts', { ids: editingGroup.contractIds })
+      if (delError) { setMessage('Error deleting old rows: ' + delError.message); setSaving(false); return }
     }
 
     // Insert one row per vendor
@@ -187,14 +190,14 @@ const emptyForm = {
     setMessage(`✓ Contract saved with ${inserts.length} vendor${inserts.length !== 1 ? 's' : ''}`)
     setSaving(false)
     setShowForm(false)
-    loadData()
+    await loadData()
   }
 
   async function deleteGroup(group: GroupedContractRow) {
     if (!confirm(`Delete "${group.contract_name}" and all ${group.contractIds.length} vendor rows? This cannot be undone.`)) return
     const { error } = await adminDelete('contracts', { ids: group.contractIds })
     if (error) { alert('Error: ' + error.message); return }
-    loadData()
+    await loadData()
   }
 
   // Quick extend by 1 year
@@ -205,7 +208,7 @@ const emptyForm = {
     const { error } = await adminUpdate('contracts', { ids: group.contractIds }, { expiration_date: newDate, status: 'extended' })
     if (error) { alert('Error: ' + error.message); return }
     setMessage(`✓ Extended "${group.contract_name}" to ${newDate}`)
-    loadData()
+    await loadData()
   }
 
   const allGrouped = getGrouped(contracts)
