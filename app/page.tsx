@@ -274,6 +274,11 @@ function VendorPanel({
                             View on {c.coop?.abbreviation} →
                           </a>
                         )}
+                        {c.piggyback_language && (
+                          <button onClick={() => onViewLanguage(c.piggyback_language!)} className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2 mt-1 block">
+                            View authorization language →
+                          </button>
+                        )}
                       </div>
                       {(() => {
                         const vpExpired = days < 0
@@ -645,6 +650,16 @@ export default function Home() {
             </a>
           </div>
         )}
+        {c.source === 'institution' && c.piggyback_language && (
+          <div className="mb-2">
+            <button
+              onClick={() => setPiggybackModal(c.piggyback_language!)}
+              className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2"
+            >
+              View authorization language →
+            </button>
+          </div>
+        )}
 
         <div className="text-xs text-gray-500 mb-2">
           <span className="font-semibold text-gray-700">Vendors: </span>
@@ -677,14 +692,6 @@ export default function Home() {
               <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg">
                 <span>✓</span>
                 <span>{selectedEntity.name} can use this via {c.institution_name} — shared on-call contract</span>
-                {c.piggyback_language && (
-                  <button
-                    onClick={() => setPiggybackModal(c.piggyback_language!)}
-                    className="ml-auto text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
-                  >
-                    View authorization language →
-                  </button>
-                )}
               </div>
             )
           ) : (
