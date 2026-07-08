@@ -571,7 +571,7 @@ export default function AdminInstitutionContracts() {
         )}
 
         {/* Add / Edit form */}
-        {showForm && <FormPanel />}
+        {showForm && FormPanel()}
 
         {/* Read-only detail view */}
         {expandedId && !showForm && (() => {

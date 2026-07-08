@@ -56,7 +56,7 @@ export default function PiggybackSubmit() {
         .from('entities')
         .select('id, name')
         .eq('email_domain', domain)
-        .single()
+        .maybeSingle()
       if (entity) {
         setEntityId(entity.id)
         setForm(prev => ({ ...prev, institution_name: entity.name }))

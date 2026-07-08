@@ -81,24 +81,35 @@ export default function AdminMemberships() {
 
   async function saveBulk() {
     if (!selectedEntityId) { setMessage('Please select an institution.'); return }
-    if (selectedCoopIds.length === 0) { setMessage('Please select at least one co-op.'); return }
+
+    const entityName = entities.find(e => e.id === selectedEntityId)?.name ?? ''
+    const isRemovingAll = selectedCoopIds.length === 0 && existingCoopIds.length > 0
+
+    if (isRemovingAll) {
+      if (!confirm(`Remove ALL co-op memberships for ${entityName}? They will no longer see any co-op contracts.`)) return
+    }
+
     setSaving(true); setMessage('')
 
-    // Delete existing memberships for this entity
+    // Delete all existing memberships for this entity first
     await adminDelete('memberships', { eq: { entity_id: selectedEntityId } })
 
-    // Insert new ones
-    const inserts = selectedCoopIds.map(coopId => ({
-      entity_id: selectedEntityId,
-      cooperative_id: coopId,
-      status: bulkStatus,
-      verified_by: bulkVerifiedBy,
-    }))
+    // Insert new ones — skip entirely if selection is empty (Supabase errors on empty inserts)
+    if (selectedCoopIds.length > 0) {
+      const inserts = selectedCoopIds.map(coopId => ({
+        entity_id: selectedEntityId,
+        cooperative_id: coopId,
+        status: bulkStatus,
+        verified_by: bulkVerifiedBy,
+      }))
+      const { error } = await adminInsert('memberships', inserts)
+      if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
+    }
 
-    const { error } = await adminInsert('memberships', inserts)
-    if (error) { setMessage('Error: ' + error.message); setSaving(false); return }
-
-    setMessage(`✓ Saved ${inserts.length} membership${inserts.length !== 1 ? 's' : ''} for ${entities.find(e => e.id === selectedEntityId)?.name}`)
+    setMessage(selectedCoopIds.length === 0
+      ? `✓ Removed all memberships for ${entityName}`
+      : `✓ Saved ${selectedCoopIds.length} membership${selectedCoopIds.length !== 1 ? 's' : ''} for ${entityName}`
+    )
     setSaving(false)
     setShowForm(false)
     loadData()
@@ -247,10 +258,12 @@ export default function AdminMemberships() {
             <div className="flex gap-3">
               <button
                 onClick={saveBulk}
-                disabled={saving || !selectedEntityId || selectedCoopIds.length === 0}
+                disabled={saving || !selectedEntityId || (selectedCoopIds.length === 0 && existingCoopIds.length === 0)}
                 className="bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white text-sm font-semibold px-5 py-2.5 rounded-lg"
               >
-                {saving ? 'Saving...' : `Save ${selectedCoopIds.length} Membership${selectedCoopIds.length !== 1 ? 's' : ''}`}
+                {saving ? 'Saving...'
+                  : selectedCoopIds.length === 0 ? 'Remove all memberships'
+                  : `Save ${selectedCoopIds.length} Membership${selectedCoopIds.length !== 1 ? 's' : ''}`}
               </button>
               <button
                 onClick={() => { setShowForm(false); setMessage('') }}

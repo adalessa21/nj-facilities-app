@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabase-auth'
 import Link from 'next/link'
@@ -136,11 +136,20 @@ function VendorPanel({
         </div>
 
         <div className="px-5 py-4">
-          {hasRealCoopContract && (
-            <div className="flex items-center gap-2 bg-green-50 text-green-800 text-sm px-3 py-2 rounded-lg mb-4">
-              <span>✓</span>
-              <span>Available via <strong>{coopEligibleCount}</strong> cooperative contract{coopEligibleCount !== 1 ? 's' : ''}</span>
-            </div>
+          {entityName ? (
+            hasRealCoopContract && (
+              <div className="flex items-center gap-2 bg-green-50 text-green-800 text-sm px-3 py-2 rounded-lg mb-4">
+                <span>✓</span>
+                <span>Available via <strong>{coopEligibleCount}</strong> cooperative contract{coopEligibleCount !== 1 ? 's' : ''}</span>
+              </div>
+            )
+          ) : (
+            hasRealCoopContract && (
+              <div className="flex items-center gap-2 bg-gray-50 text-gray-700 text-sm px-3 py-2 rounded-lg mb-4">
+                <span>📋</span>
+                <span>Holds <strong>{allVendorContracts.filter(c => c.coop?.abbreviation !== 'Shared Contract').length}</strong> cooperative contract{allVendorContracts.filter(c => c.coop?.abbreviation !== 'Shared Contract').length !== 1 ? 's' : ''}</span>
+              </div>
+            )
           )}
 
           <div className="flex flex-wrap gap-2 mb-4">
@@ -166,82 +175,118 @@ function VendorPanel({
             )}
           </div>
 
-          {eligible.length > 0 && (
+          {entityName ? (
+            // Institution selected — eligible / ineligible split
             <>
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Contracts your institution can use</div>
-              {eligible.map(c => {
-                const days = daysUntil(c.expiration_date)
-                const exp = formatDate(c.expiration_date)
-                const isShared = c.coop?.abbreviation === 'Shared Contract'
-                return (
-                  <div key={c.id} className="flex items-start justify-between mb-3 pb-3 border-b border-gray-100 last:border-0">
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800">{c.contract_name}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        {isShared ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300">
-                            ⭐ Your shared contract
-                          </span>
-                        ) : (
+              {eligible.length > 0 && (
+                <>
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Contracts your institution can use</div>
+                  {eligible.map(c => {
+                    const days = daysUntil(c.expiration_date)
+                    const exp = formatDate(c.expiration_date)
+                    const isShared = c.coop?.abbreviation === 'Shared Contract'
+                    return (
+                      <div key={c.id} className="flex items-start justify-between mb-3 pb-3 border-b border-gray-100 last:border-0">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-800">{c.contract_name}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {isShared ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300">
+                                ⭐ Your shared contract
+                              </span>
+                            ) : (
+                              <CoopBadge abbr={c.coop.abbreviation} />
+                            )}
+                            <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{c.contract_number}</span>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            Expires {exp}
+                            {days > 0 && days < 180 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
+                          </div>
+                          {isShared ? (
+                            c.piggyback_language && (
+                              <button onClick={() => onViewLanguage(c.piggyback_language!)} className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2 mt-1 block">
+                                View authorization language →
+                              </button>
+                            )
+                          ) : (
+                            c.source_url && (
+                              <a href={c.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2 mt-1 block">
+                                View on {c.coop.abbreviation} →
+                              </a>
+                            )
+                          )}
+                        </div>
+                        {(() => {
+                          const vpExpired = days < 0
+                          const vpSoon = !vpExpired && days <= 180
+                          const vpClass = vpExpired ? 'bg-red-100 text-red-700' : vpSoon || c.status === 'extended' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                          const vpLabel = vpExpired ? 'Expired' : vpSoon ? 'Expiring Soon' : c.status === 'extended' ? 'Extended' : 'Active'
+                          return <span className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${vpClass}`}>{vpLabel}</span>
+                        })()}
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+              {ineligible.length > 0 && (
+                <>
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4">Also holds — requires different co-op membership</div>
+                  {ineligible.map(c => (
+                    <div key={c.id} className="flex items-start justify-between mb-2 pb-2 border-b border-gray-100 last:border-0 opacity-40">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-800">{c.contract_name}</div>
+                        <div className="flex items-center gap-2 mt-1">
                           <CoopBadge abbr={c.coop.abbreviation} />
-                        )}
-                        <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{c.contract_number}</span>
+                          <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{c.contract_number}</span>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        Expires {exp}
-                        {days < 180 && days > 0 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
-                      </div>
-                      {isShared ? (
-                        c.piggyback_language && (
-                          <button
-                            onClick={() => onViewLanguage(c.piggyback_language!)}
-                            className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2 mt-1 block"
-                          >
-                            View authorization language →
-                          </button>
-                        )
-                      ) : (
-                        c.source_url && (
-                          <a
-                            href={c.source_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2 mt-1 block"
-                          >
-                            View on {c.coop.abbreviation} →
+                      <span className="text-xs text-gray-400 shrink-0">Not eligible</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </>
+          ) : (
+            // No institution selected — neutral list with no eligibility judgments
+            allVendorContracts.length > 0 && (
+              <>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Contracts held</div>
+                {allVendorContracts.map(c => {
+                  const days = daysUntil(c.expiration_date)
+                  const exp = formatDate(c.expiration_date)
+                  return (
+                    <div key={c.id} className="flex items-start justify-between mb-3 pb-3 border-b border-gray-100 last:border-0">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-800">{c.contract_name}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <CoopBadge abbr={c.coop?.abbreviation || ''} />
+                          <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{c.contract_number}</span>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Expires {exp}
+                          {days === 0 && <span className="text-amber-600 font-medium"> · expires today</span>}
+                          {days > 0 && days < 180 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
+                          {days < 0 && <span className="text-red-600 font-medium"> · EXPIRED</span>}
+                        </div>
+                        {c.source_url && (
+                          <a href={c.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2 mt-1 block">
+                            View on {c.coop?.abbreviation} →
                           </a>
-                        )
-                      )}
+                        )}
+                      </div>
+                      {(() => {
+                        const vpExpired = days < 0
+                        const vpSoon = !vpExpired && days <= 180
+                        const vpClass = vpExpired ? 'bg-red-100 text-red-700' : vpSoon || c.status === 'extended' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                        const vpLabel = vpExpired ? 'Expired' : vpSoon ? 'Expiring Soon' : c.status === 'extended' ? 'Extended' : 'Active'
+                        return <span className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${vpClass}`}>{vpLabel}</span>
+                      })()}
                     </div>
-                    {(() => {
-                      const vpExpired = days <= 0
-                      const vpSoon = !vpExpired && days <= 180
-                      const vpClass = vpExpired ? 'bg-red-100 text-red-700' : vpSoon || c.status === 'extended' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
-                      const vpLabel = vpExpired ? 'Expired' : vpSoon ? 'Expiring Soon' : c.status === 'extended' ? 'Extended' : 'Active'
-                      return <span className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${vpClass}`}>{vpLabel}</span>
-                    })()}
-                  </div>
-                )
-              })}
-            </>
-          )}
-
-          {ineligible.length > 0 && (
-            <>
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4">Also holds — requires different co-op membership</div>
-              {ineligible.map(c => (
-                <div key={c.id} className="flex items-start justify-between mb-2 pb-2 border-b border-gray-100 last:border-0 opacity-40">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-800">{c.contract_name}</div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <CoopBadge abbr={c.coop.abbreviation} />
-                      <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{c.contract_number}</span>
-                    </div>
-                  </div>
-                  <span className="text-xs text-gray-400 shrink-0">Not eligible</span>
-                </div>
-              ))}
-            </>
+                  )
+                })}
+              </>
+            )
           )}
         </div>
 
@@ -272,6 +317,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [autoDetected, setAutoDetected] = useState(false)
+  const lastDetectedEmail = useRef<string | null>(null)
 
   // Load initial data
   useEffect(() => {
@@ -289,13 +335,15 @@ export default function Home() {
   // Auth state
   useEffect(() => {
     async function detectAndSetInstitution(email: string) {
+      if (email === lastDetectedEmail.current) return // skip on token-refresh re-fires
+      lastDetectedEmail.current = email
       const domain = email.split('@')[1]
       if (!domain) return
       const { data } = await supabase
         .from('entities')
         .select('id, name, type, county')
         .eq('email_domain', domain)
-        .single()
+        .maybeSingle() // .single() returns 406 when no row matches; maybeSingle() returns null
       if (data) {
         setSelectedEntity(data)
         setAutoDetected(true)
@@ -317,6 +365,7 @@ export default function Home() {
       } else {
         setSelectedEntity(null)
         setAutoDetected(false)
+        lastDetectedEmail.current = null // reset so re-login with a different email works
       }
     })
     return () => subscription.unsubscribe()

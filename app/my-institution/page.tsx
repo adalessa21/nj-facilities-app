@@ -116,7 +116,7 @@ export default function MyInstitutionPage() {
         .from('entities')
         .select('id, name, type, county')
         .eq('email_domain', domain)
-        .single()
+        .maybeSingle()
 
       if (!entityData) { router.replace('/login'); return }
       setEntity(entityData)
