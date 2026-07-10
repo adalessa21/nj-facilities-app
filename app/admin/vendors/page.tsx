@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
+import { inputClsTeal as inputCls, labelCls } from '@/lib/ui'
 import Link from 'next/link'
 
 interface Vendor {
@@ -159,22 +160,22 @@ export default function AdminVendors() {
                 { label: 'Notes', key: 'notes', placeholder: 'Internal notes' },
               ].map(f => (
                 <div key={f.key}>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">{f.label}</label>
+                  <label className={labelCls}>{f.label}</label>
                   <input
                     type="text"
                     value={(form as Record<string, unknown>)[f.key] as string}
                     onChange={e => setForm({ ...form, [f.key]: e.target.value })}
                     placeholder={f.placeholder}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                    className={inputCls}
                   />
                 </div>
               ))}
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Listing Tier</label>
+                <label className={labelCls}>Listing Tier</label>
                 <select
                   value={form.listing_tier}
                   onChange={e => setForm({ ...form, listing_tier: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className={inputCls}
                 >
                   <option value="basic">Basic (Free)</option>
                   <option value="premium">Premium ($1,500/yr)</option>
@@ -227,7 +228,7 @@ export default function AdminVendors() {
             placeholder="Search vendors..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
           />
           <select
             value={filterTier}

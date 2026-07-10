@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
 import { parseLocalDate, formatDate, daysUntil, dateToString } from '@/lib/dates'
+import { inputCls, labelCls } from '@/lib/ui'
 import Link from 'next/link'
 
 interface Contract {
@@ -273,53 +274,53 @@ const emptyForm = {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Cooperative *</label>
+                <label className={labelCls}>Cooperative *</label>
                 <select
                   value={form.cooperative_id}
                   onChange={e => setForm({ ...form, cooperative_id: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className={inputCls}
                 >
                   <option value="">Select co-op...</option>
                   {coops.map(c => <option key={c.id} value={c.id}>{c.abbreviation} — {c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Contract Number</label>
+                <label className={labelCls}>Contract Number</label>
                 <input
                   type="text"
                   value={form.contract_number}
                   onChange={e => setForm({ ...form, contract_number: e.target.value })}
                   placeholder="e.g. ESCNJ 23/24-23"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className={inputCls}
                 />
               </div>
               <div className="col-span-full">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Contract Name *</label>
+                <label className={labelCls}>Contract Name *</label>
                 <input
                   type="text"
                   value={form.contract_name}
                   onChange={e => setForm({ ...form, contract_name: e.target.value })}
                   placeholder="e.g. H.V.A.C. Services — Time & Material"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className={inputCls}
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Trade Category *</label>
+                <label className={labelCls}>Trade Category *</label>
                 <select
                   value={form.trade_category}
                   onChange={e => setForm({ ...form, trade_category: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className={inputCls}
                 >
                   <option value="">Select trade...</option>
                   {TRADES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Status</label>
+                <label className={labelCls}>Status</label>
                 <select
                   value={form.status}
                   onChange={e => setForm({ ...form, status: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className={inputCls}
                 >
                   <option value="active">Active</option>
                   <option value="extended">Extended</option>
@@ -328,32 +329,32 @@ const emptyForm = {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Expiration Date *</label>
+                <label className={labelCls}>Expiration Date *</label>
                 <input
                   type="date"
                   value={form.expiration_date}
                   onChange={e => setForm({ ...form, expiration_date: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className={inputCls}
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Notes</label>
+                <label className={labelCls}>Notes</label>
                 <input
                   type="text"
                   value={form.notes}
                   onChange={e => setForm({ ...form, notes: e.target.value })}
                   placeholder="Brief description shown on contract card"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className={inputCls}
                 />
               </div>
               <div className="col-span-full">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Source Document URL</label>
+                <label className={labelCls}>Source Document URL</label>
                 <input
                   type="text"
                   value={form.source_url || ''}
                   onChange={e => setForm({ ...form, source_url: e.target.value })}
                   placeholder="e.g. https://escnj.us/co-op-pricing/members-section/hvac-escnj-2324-23"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className={inputCls}
                 />
                 <p className="text-xs text-gray-400 mt-1">Direct link to the co-op's page for this contract. Users click "View source →" to go there.</p>
               </div>
@@ -361,7 +362,7 @@ const emptyForm = {
 
             {/* Vendor multi-select */}
             <div className="mb-4">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
+              <label className={labelCls}>
                 Awarded Vendors * <span className="text-gray-400 font-normal normal-case">({selectedVendorIds.length} selected)</span>
               </label>
               <input
@@ -369,7 +370,7 @@ const emptyForm = {
                 placeholder="Search vendors..."
                 value={vendorSearch}
                 onChange={e => setVendorSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 mb-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
               <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
                 {filteredVendors.map((v, i) => {
@@ -424,12 +425,12 @@ const emptyForm = {
             placeholder="Search contracts, vendors, co-ops..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white"
           >
             <option value="all">All statuses</option>
             <option value="active">Active</option>
@@ -439,7 +440,7 @@ const emptyForm = {
           <select
             value={filterTrade}
             onChange={e => setFilterTrade(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white"
           >
             <option value="all">All trades</option>
             {TRADES.map(t => <option key={t} value={t}>{t}</option>)}

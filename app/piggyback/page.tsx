@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabase-auth'
 import Link from 'next/link'
+import { inputCls, labelCls } from '@/lib/ui'
 
 const TRADES = [
   'Automotive Parts','Doors & Hardware','Electrical','Elevator','Equipment Rental','Fencing',
@@ -197,7 +198,7 @@ export default function PiggybackSubmit() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
+              <label className={labelCls}>
                 Institution Name *{entityId && <span className="ml-1 text-teal-600 font-normal normal-case">· verified</span>}
               </label>
               <input
@@ -206,56 +207,56 @@ export default function PiggybackSubmit() {
                 onChange={e => !entityId && update('institution_name', e.target.value)}
                 readOnly={!!entityId}
                 placeholder="e.g. Rutgers University"
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${entityId ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-default' : 'border-gray-300 focus:ring-2 focus:ring-amber-400'}`}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${entityId ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-default' : 'border-gray-300 text-gray-900 bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-amber-400'}`}
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Vendor Name *</label>
+              <label className={labelCls}>Vendor Name *</label>
               <input
                 type="text"
                 value={form.vendor_name}
                 onChange={e => update('vendor_name', e.target.value)}
                 placeholder="e.g. ABC Mechanical Inc."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Trade Category *</label>
+              <label className={labelCls}>Trade Category *</label>
               <select
                 value={form.trade_category}
                 onChange={e => update('trade_category', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               >
                 <option value="">Select trade...</option>
                 {TRADES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Bid / Contract Number</label>
+              <label className={labelCls}>Bid / Contract Number</label>
               <input
                 type="text"
                 value={form.contract_number}
                 onChange={e => update('contract_number', e.target.value)}
                 placeholder="e.g. RU-2024-HVAC-001"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Contract Start Date</label>
+              <label className={labelCls}>Contract Start Date</label>
               <input
                 type="date"
                 value={form.start_date}
                 onChange={e => update('start_date', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Contract Expiration Date *</label>
+              <label className={labelCls}>Contract Expiration Date *</label>
               <input
                 type="date"
                 value={form.expiration_date}
                 onChange={e => update('expiration_date', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               />
             </div>
           </div>
@@ -267,7 +268,7 @@ export default function PiggybackSubmit() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Sharing Allowed</label>
+              <label className={labelCls}>Sharing Allowed</label>
               <div className="flex items-center gap-3 mt-1">
                 <button
                   type="button"
@@ -286,14 +287,14 @@ export default function PiggybackSubmit() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Authorized Users</label>
+              <label className={labelCls}>Authorized Users</label>
               <select
                 value={form.authorized_users}
                 onChange={e => {
                   update('authorized_users', e.target.value)
                   if (e.target.value === 'Any NJ public entity') setSelectedInstitutions([])
                 }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               >
                 <option value="Any NJ public entity">Any NJ public entity</option>
                 <option value="Specific institutions only">Specific institutions only</option>
@@ -353,34 +354,34 @@ export default function PiggybackSubmit() {
               </div>
             )}
             <div className="col-span-full">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Authorization Language</label>
+              <label className={labelCls}>Authorization Language</label>
               <textarea
                 value={form.piggyback_language}
                 onChange={e => update('piggyback_language', e.target.value)}
                 placeholder="Paste the contract language that authorizes shared use..."
                 rows={3}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               />
               <p className="text-xs text-gray-400 mt-1">The exact clause from the contract or bid spec that permits other entities to use this contract.</p>
             </div>
             <div className="col-span-full">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Insurance Requirements</label>
+              <label className={labelCls}>Insurance Requirements</label>
               <input
                 type="text"
                 value={form.insurance_requirements}
                 onChange={e => update('insurance_requirements', e.target.value)}
                 placeholder="e.g. $1M general liability, $2M umbrella"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               />
             </div>
             <div className="col-span-full">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Notes</label>
+              <label className={labelCls}>Notes</label>
               <textarea
                 value={form.notes}
                 onChange={e => update('notes', e.target.value)}
                 placeholder="Any additional details about the contract..."
                 rows={2}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               />
             </div>
           </div>
@@ -392,24 +393,24 @@ export default function PiggybackSubmit() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Your Name *</label>
+              <label className={labelCls}>Your Name *</label>
               <input
                 type="text"
                 value={form.submitter_name}
                 onChange={e => update('submitter_name', e.target.value)}
                 placeholder="e.g. John Smith"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Your Email *</label>
+              <label className={labelCls}>Your Email *</label>
               <input
                 type="email"
                 value={form.submitter_email}
                 onChange={e => !userEmail && update('submitter_email', e.target.value)}
                 readOnly={!!userEmail}
                 placeholder="e.g. jsmith@rutgers.edu"
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${userEmail ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-default' : 'border-gray-300 focus:ring-2 focus:ring-amber-400'}`}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${userEmail ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-default' : 'border-gray-300 text-gray-900 bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-amber-400'}`}
               />
               {userEmail && !entityId && (
                 <p className="text-xs text-amber-600 mt-1">Signed in as {userEmail} — no matching institution found for this email domain.</p>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { adminGet, adminInsert, adminDelete } from '@/lib/admin-client'
+import { inputClsGreen as inputCls, labelCls } from '@/lib/ui'
 import Link from 'next/link'
 
 interface Membership {
@@ -175,11 +176,11 @@ export default function AdminMemberships() {
 
             {/* Institution selector */}
             <div className="mb-4">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Institution *</label>
+              <label className={labelCls}>Institution *</label>
               <select
                 value={selectedEntityId}
                 onChange={e => handleEntityChange(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                className={inputCls}
               >
                 <option value="">Select institution...</option>
                 <optgroup label="Public Universities">
@@ -230,11 +231,11 @@ export default function AdminMemberships() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Status</label>
+                    <label className={labelCls}>Status</label>
                     <select
                       value={bulkStatus}
                       onChange={e => setBulkStatus(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                      className={inputCls}
                     >
                       <option value="confirmed">Confirmed</option>
                       <option value="unverified">Unverified</option>
@@ -242,13 +243,13 @@ export default function AdminMemberships() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Verified By</label>
+                    <label className={labelCls}>Verified By</label>
                     <input
                       type="text"
                       value={bulkVerifiedBy}
                       onChange={e => setBulkVerifiedBy(e.target.value)}
                       placeholder="e.g. ESCNJ public member list"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                      className={inputCls}
                     />
                   </div>
                 </div>
@@ -282,12 +283,12 @@ export default function AdminMemberships() {
             placeholder="Search institutions or co-ops..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
           />
           <select
             value={filterCoop}
             onChange={e => setFilterCoop(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white"
           >
             <option value="all">All co-ops</option>
             {coops.map(c => <option key={c.id} value={c.id}>{c.abbreviation}</option>)}

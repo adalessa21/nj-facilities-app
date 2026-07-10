@@ -771,7 +771,7 @@ export default function Home() {
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row gap-2">
           <select
-            className="h-10 border border-gray-300 rounded-lg px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 sm:min-w-[260px]"
+            className="h-10 border border-gray-300 rounded-lg px-3 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 sm:min-w-[260px]"
             value={selectedEntity?.id || ''}
             onChange={e => {
               const ent = entities.find(en => en.id === e.target.value) || null
@@ -796,7 +796,7 @@ export default function Home() {
           <input
             type="text"
             placeholder="Search vendor, trade, or contract #..."
-            className="flex-1 h-10 border border-gray-300 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="flex-1 h-10 border border-gray-300 rounded-lg px-3 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
             value={query}
             onChange={e => setQuery(e.target.value)}
           />

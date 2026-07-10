@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
+import { inputClsPurple as inputCls, labelCls } from '@/lib/ui'
 import Link from 'next/link'
 
 interface Cooperative {
@@ -99,10 +100,10 @@ export default function AdminCooperatives() {
             <h2 className="font-bold text-gray-800 mb-4">{editingCoop ? 'Edit Cooperative' : 'Add New Cooperative'}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="col-span-full">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Full Name *</label>
+                <label className={labelCls}>Full Name *</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="e.g. Educational Services Commission of New Jersey"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                  className={inputCls} />
               </div>
               {[
                 { label: 'Abbreviation', key: 'abbreviation', ph: 'e.g. ESCNJ' },
@@ -112,15 +113,15 @@ export default function AdminCooperatives() {
                 { label: 'Contact Email', key: 'contact_email', ph: 'e.g. info@escnj.us' },
               ].map(f => (
                 <div key={f.key}>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">{f.label}</label>
+                  <label className={labelCls}>{f.label}</label>
                   <input type="text" value={(form as Record<string, unknown>)[f.key] as string}
                     onChange={e => setForm({ ...form, [f.key]: e.target.value })}
                     placeholder={f.ph}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                    className={inputCls} />
                 </div>
               ))}
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Badge Color</label>
+                <label className={labelCls}>Badge Color</label>
                 <div className="flex items-center gap-3">
                   <input type="color" value={form.display_color} onChange={e => setForm({ ...form, display_color: e.target.value })}
                     className="w-10 h-10 rounded border border-gray-300 cursor-pointer" />
@@ -128,10 +129,10 @@ export default function AdminCooperatives() {
                 </div>
               </div>
               <div className="col-span-full">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Notes</label>
+                <label className={labelCls}>Notes</label>
                 <input type="text" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
                   placeholder="Internal notes"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                  className={inputCls} />
               </div>
             </div>
             <div className="flex gap-3 mt-5">

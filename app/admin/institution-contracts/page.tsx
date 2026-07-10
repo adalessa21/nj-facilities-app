@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
 import { formatDate, daysUntil } from '@/lib/dates'
+import { inputCls, labelCls } from '@/lib/ui'
 import Link from 'next/link'
 
 const TRADES = [
@@ -85,9 +86,7 @@ const emptyForm: EditForm = {
   submitter_email: '',
 }
 
-// Module-level style constants shared by FormPanel and the page
-const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400'
-const labelCls = 'text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1'
+// inputCls and labelCls imported from @/lib/ui above
 
 // ── FormPanel — module-level so React tracks it as a stable component type,
 // preventing input focus loss that would occur if it were defined inside the

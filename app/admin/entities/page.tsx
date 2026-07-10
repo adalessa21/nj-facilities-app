@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
+import { inputClsBlue as inputCls, labelCls } from '@/lib/ui'
 import Link from 'next/link'
 
 interface Entity {
@@ -127,22 +128,22 @@ export default function AdminEntities() {
             <h2 className="font-bold text-gray-800 mb-4">{editingEntity ? 'Edit Institution' : 'Add New Institution'}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="col-span-full">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Institution Name *</label>
+                <label className={labelCls}>Institution Name *</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="e.g. Raritan Valley Community College"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  className={inputCls} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Type *</label>
+                <label className={labelCls}>Type *</label>
                 <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  className={inputCls}>
                   {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">County</label>
+                <label className={labelCls}>County</label>
                 <select value={form.county} onChange={e => setForm({ ...form, county: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  className={inputCls}>
                   <option value="">Select county...</option>
                   {NJ_COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -155,11 +156,11 @@ export default function AdminEntities() {
                 { label: 'Facilities Contact Email', key: 'facilities_contact_email', ph: 'e.g. jsmith@college.edu' },
               ].map(f => (
                 <div key={f.key}>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">{f.label}</label>
+                  <label className={labelCls}>{f.label}</label>
                   <input type="text" value={(form as Record<string, unknown>)[f.key] as string}
                     onChange={e => setForm({ ...form, [f.key]: e.target.value })}
                     placeholder={f.ph}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                    className={inputCls} />
                 </div>
               ))}
               <div className="flex items-center gap-2 pt-5">
@@ -180,9 +181,9 @@ export default function AdminEntities() {
 
         <div className="flex gap-3 mb-4">
           <input type="text" placeholder="Search institutions..." value={search} onChange={e => setSearch(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400" />
           <select value={filterType} onChange={e => setFilterType(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white">
             <option value="all">All types</option>
             {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
