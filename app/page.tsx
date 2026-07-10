@@ -320,6 +320,7 @@ export default function Home() {
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null)
   const [piggybackModal, setPiggybackModal] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showAllTrades, setShowAllTrades] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [autoDetected, setAutoDetected] = useState(false)
   const lastDetectedEmail = useRef<string | null>(null)
@@ -768,9 +769,9 @@ export default function Home() {
 
       {/* Search bar */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex gap-2">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row gap-2">
           <select
-            className="h-10 border border-gray-300 rounded-lg px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[260px]"
+            className="h-10 border border-gray-300 rounded-lg px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 sm:min-w-[260px]"
             value={selectedEntity?.id || ''}
             onChange={e => {
               const ent = entities.find(en => en.id === e.target.value) || null
@@ -839,7 +840,7 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Trade filter — multi-select */}
+        {/* Trade filter — multi-select; collapses to 8 chips on mobile */}
         <div className="mb-1">
           <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Filter by trade</div>
           <div className="flex flex-wrap gap-1.5 mb-3">
@@ -849,18 +850,30 @@ export default function Home() {
             >
               All trades
             </button>
-            {trades.map(t => {
+            {trades.map((t, idx) => {
               const isActive = selectedTrades.includes(t)
+              // On mobile, hide chips beyond index 7 unless selected or expanded
+              const hiddenOnMobile = !showAllTrades && idx >= 8 && !isActive
               return (
                 <button
                   key={t}
                   onClick={() => toggleTrade(t)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${isActive ? 'bg-teal-50 border-teal-500 text-teal-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-teal-400'}`}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all
+                    ${hiddenOnMobile ? 'hidden sm:inline-flex' : ''}
+                    ${isActive ? 'bg-teal-50 border-teal-500 text-teal-700 font-semibold' : 'bg-white border-gray-300 text-gray-500 hover:border-teal-400'}`}
                 >
                   {t}
                 </button>
               )
             })}
+            {trades.length > 8 && (
+              <button
+                onClick={() => setShowAllTrades(p => !p)}
+                className="sm:hidden text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-400 hover:border-gray-400"
+              >
+                {showAllTrades ? 'Show fewer' : `+${trades.length - 8 - selectedTrades.filter(t => trades.indexOf(t) >= 8).length} more`}
+              </button>
+            )}
           </div>
         </div>
 

@@ -271,7 +271,7 @@ const emptyForm = {
               Select all vendors awarded this contract — they will all appear under one contract card on the platform.
             </p>
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Cooperative *</label>
                 <select
@@ -293,7 +293,7 @@ const emptyForm = {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-full">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Contract Name *</label>
                 <input
                   type="text"
@@ -346,7 +346,7 @@ const emptyForm = {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-full">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Source Document URL</label>
                 <input
                   type="text"
@@ -451,7 +451,7 @@ const emptyForm = {
         {loading ? (
           <div className="text-center py-12 text-gray-400">Loading...</div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">

@@ -195,7 +195,7 @@ export default function PiggybackSubmit() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
                 Institution Name *{entityId && <span className="ml-1 text-teal-600 font-normal normal-case">· verified</span>}
@@ -265,7 +265,7 @@ export default function PiggybackSubmit() {
             Let other institutions know if and how they can use this contract.
           </p>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Sharing Allowed</label>
               <div className="flex items-center gap-3 mt-1">
@@ -300,7 +300,7 @@ export default function PiggybackSubmit() {
               </select>
             </div>
             {form.authorized_users === 'Specific institutions only' && (
-              <div className="col-span-2">
+              <div className="col-span-full">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">
                   Authorized Institutions <span className="text-gray-400 font-normal normal-case">({selectedInstitutions.length} selected)</span>
                 </label>
@@ -352,7 +352,7 @@ export default function PiggybackSubmit() {
                 </div>
               </div>
             )}
-            <div className="col-span-2">
+            <div className="col-span-full">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Authorization Language</label>
               <textarea
                 value={form.piggyback_language}
@@ -363,7 +363,7 @@ export default function PiggybackSubmit() {
               />
               <p className="text-xs text-gray-400 mt-1">The exact clause from the contract or bid spec that permits other entities to use this contract.</p>
             </div>
-            <div className="col-span-2">
+            <div className="col-span-full">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Insurance Requirements</label>
               <input
                 type="text"
@@ -373,7 +373,7 @@ export default function PiggybackSubmit() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-full">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Notes</label>
               <textarea
                 value={form.notes}
@@ -390,7 +390,7 @@ export default function PiggybackSubmit() {
             So we can contact you if we have questions about this contract.
           </p>
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Your Name *</label>
               <input

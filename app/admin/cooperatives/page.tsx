@@ -97,8 +97,8 @@ export default function AdminCooperatives() {
         {showForm && (
           <div className="bg-white border border-gray-200 rounded-xl p-5 mb-5">
             <h2 className="font-bold text-gray-800 mb-4">{editingCoop ? 'Edit Cooperative' : 'Add New Cooperative'}</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="col-span-full">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Full Name *</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="e.g. Educational Services Commission of New Jersey"
@@ -127,7 +127,7 @@ export default function AdminCooperatives() {
                   <span className="text-sm text-gray-500">Used for co-op badge in search results</span>
                 </div>
               </div>
-              <div className="col-span-2">
+              <div className="col-span-full">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Notes</label>
                 <input type="text" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
                   placeholder="Internal notes"

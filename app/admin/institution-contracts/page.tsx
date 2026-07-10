@@ -85,6 +85,198 @@ const emptyForm: EditForm = {
   submitter_email: '',
 }
 
+// Module-level style constants shared by FormPanel and the page
+const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400'
+const labelCls = 'text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1'
+
+// ── FormPanel — module-level so React tracks it as a stable component type,
+// preventing input focus loss that would occur if it were defined inside the
+// parent component body (which recreates the function reference every render).
+interface FormPanelProps {
+  addMode: boolean
+  saving: boolean
+  editForm: EditForm
+  setEditForm: React.Dispatch<React.SetStateAction<EditForm>>
+  editSelectedInstitutions: string[]
+  setEditSelectedInstitutions: React.Dispatch<React.SetStateAction<string[]>>
+  onSave: () => void
+  onCancel: () => void
+}
+
+function FormPanel({
+  addMode, saving, editForm, setEditForm,
+  editSelectedInstitutions, setEditSelectedInstitutions,
+  onSave, onCancel,
+}: FormPanelProps) {
+  return (
+    <div className={`mt-4 bg-white border rounded-xl p-5 ${addMode ? 'border-gray-200' : 'border-amber-200'}`}>
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="font-bold text-gray-800">{addMode ? 'Add Contract' : 'Edit Contract'}</h3>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 text-sm border border-gray-200 rounded px-2 py-0.5">✕ Cancel</button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className={labelCls}>Institution Name *</label>
+          <input type="text" value={editForm.institution_name}
+            onChange={e => setEditForm(f => ({ ...f, institution_name: e.target.value }))}
+            placeholder="e.g. Rutgers University" className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Vendor Name *</label>
+          <input type="text" value={editForm.vendor_name}
+            onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))}
+            placeholder="e.g. ABC Mechanical Inc." className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Trade Category</label>
+          <select value={editForm.trade_category}
+            onChange={e => setEditForm(f => ({ ...f, trade_category: e.target.value }))}
+            className={inputCls}>
+            <option value="">Select trade...</option>
+            {TRADES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Bid / Contract Number</label>
+          <input type="text" value={editForm.contract_number}
+            onChange={e => setEditForm(f => ({ ...f, contract_number: e.target.value }))}
+            placeholder="e.g. RU-2024-HVAC-001" className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Contract Start Date</label>
+          <input type="date" value={editForm.start_date}
+            onChange={e => setEditForm(f => ({ ...f, start_date: e.target.value }))}
+            className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Contract Expiration Date *</label>
+          <input type="date" value={editForm.expiration_date}
+            onChange={e => setEditForm(f => ({ ...f, expiration_date: e.target.value }))}
+            className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Sharing Allowed</label>
+          <div className="flex items-center gap-3 mt-1">
+            <button type="button"
+              onClick={() => setEditForm(f => ({ ...f, piggyback_allowed: true }))}
+              className={`text-sm px-4 py-2 rounded-lg border font-medium transition-colors ${editForm.piggyback_allowed ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+              Yes
+            </button>
+            <button type="button"
+              onClick={() => setEditForm(f => ({ ...f, piggyback_allowed: false }))}
+              className={`text-sm px-4 py-2 rounded-lg border font-medium transition-colors ${!editForm.piggyback_allowed ? 'bg-red-50 border-red-400 text-red-700' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}>
+              No
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>Authorized Users</label>
+          <select
+            value={editForm.authorized_users_mode}
+            onChange={e => {
+              setEditForm(f => ({ ...f, authorized_users_mode: e.target.value }))
+              if (e.target.value === 'Any NJ public entity') setEditSelectedInstitutions([])
+            }}
+            className={inputCls}>
+            <option value="Any NJ public entity">Any NJ public entity</option>
+            <option value="Specific institutions only">Specific institutions only</option>
+          </select>
+        </div>
+
+        {editForm.authorized_users_mode === 'Specific institutions only' && (
+          <div className="col-span-full">
+            <label className={labelCls}>
+              Authorized Institutions <span className="text-gray-400 font-normal normal-case">({editSelectedInstitutions.length} selected)</span>
+            </label>
+            <div className="flex gap-2 mb-3">
+              <button type="button"
+                onClick={() => setEditSelectedInstitutions([...ALL_INSTITUTIONS])}
+                className="text-xs text-green-700 hover:text-green-900 font-medium bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+                Select all
+              </button>
+              <button type="button"
+                onClick={() => setEditSelectedInstitutions([])}
+                className="text-xs text-gray-600 hover:text-gray-800 font-medium bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+                Clear all
+              </button>
+            </div>
+            <div className="border border-gray-200 rounded-xl p-4 max-h-[380px] overflow-y-auto space-y-4">
+              {(Object.entries(INSTITUTIONS) as [string, string[]][]).map(([group, names]) => (
+                <div key={group}>
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{group}</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {names.map(name => {
+                      const isChecked = editSelectedInstitutions.includes(name)
+                      return (
+                        <label key={name}
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isChecked ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}>
+                          <input type="checkbox" checked={isChecked}
+                            onChange={() => setEditSelectedInstitutions(prev =>
+                              prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+                            )}
+                            className="w-4 h-4 accent-green-600" />
+                          <span className={`text-sm ${isChecked ? 'font-semibold text-green-800' : 'text-gray-700'}`}>{name}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="col-span-full">
+          <label className={labelCls}>Authorization Language</label>
+          <textarea value={editForm.piggyback_language}
+            onChange={e => setEditForm(f => ({ ...f, piggyback_language: e.target.value }))}
+            placeholder="Paste the contract language that authorizes shared use..."
+            rows={3} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Insurance Requirements</label>
+          <input type="text" value={editForm.insurance_requirements}
+            onChange={e => setEditForm(f => ({ ...f, insurance_requirements: e.target.value }))}
+            placeholder="e.g. $1M general liability, $2M umbrella" className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Notes</label>
+          <textarea value={editForm.notes}
+            onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+            rows={2} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Submitter Name</label>
+          <input type="text" value={editForm.submitter_name}
+            onChange={e => setEditForm(f => ({ ...f, submitter_name: e.target.value }))}
+            placeholder="e.g. John Smith" className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Submitter Email</label>
+          <input type="email" value={editForm.submitter_email}
+            onChange={e => setEditForm(f => ({ ...f, submitter_email: e.target.value }))}
+            placeholder="e.g. jsmith@rutgers.edu" className={inputCls} />
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-lg"
+        >
+          {saving ? 'Saving...' : addMode ? 'Add Contract' : 'Save Changes'}
+        </button>
+        <button onClick={onCancel}
+          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-5 py-2.5 rounded-lg">
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminInstitutionContracts() {
   const [contracts, setContracts] = useState<InstitutionContract[]>([])
   const [loading, setLoading] = useState(true)
@@ -264,19 +456,15 @@ export default function AdminInstitutionContracts() {
   const pendingCount = contracts.filter(c => !c.approved_by_admin).length
 
 
-  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400'
-  const labelCls = 'text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1'
-
-  // Shared form body — used for both add and edit
-  function FormPanel() {
-    return (
+  /* eslint-disable-next-line */
+  if (false) {return ( /* dead code — FormPanel is now module-level */
       <div className={`mt-4 bg-white border rounded-xl p-5 ${addMode ? 'border-gray-200' : 'border-amber-200'}`}>
         <div className="flex justify-between items-start mb-4">
           <h3 className="font-bold text-gray-800">{addMode ? 'Add Contract' : 'Edit Contract'}</h3>
           <button onClick={cancelForm} className="text-gray-400 hover:text-gray-600 text-sm border border-gray-200 rounded px-2 py-0.5">✕ Cancel</button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className={labelCls}>Institution Name *</label>
             <input type="text" value={editForm.institution_name}
@@ -346,7 +534,7 @@ export default function AdminInstitutionContracts() {
           </div>
 
           {editForm.authorized_users_mode === 'Specific institutions only' && (
-            <div className="col-span-2">
+            <div className="col-span-full">
               <label className={labelCls}>
                 Authorized Institutions <span className="text-gray-400 font-normal normal-case">({editSelectedInstitutions.length} selected)</span>
               </label>
@@ -366,7 +554,7 @@ export default function AdminInstitutionContracts() {
                 {(Object.entries(INSTITUTIONS) as [string, string[]][]).map(([group, names]) => (
                   <div key={group}>
                     <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{group}</div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {names.map(name => {
                         const isChecked = editSelectedInstitutions.includes(name)
                         return (
@@ -388,7 +576,7 @@ export default function AdminInstitutionContracts() {
             </div>
           )}
 
-          <div className="col-span-2">
+          <div className="col-span-full">
             <label className={labelCls}>Authorization Language</label>
             <textarea value={editForm.piggyback_language}
               onChange={e => setEditForm(f => ({ ...f, piggyback_language: e.target.value }))}
@@ -487,7 +675,7 @@ export default function AdminInstitutionContracts() {
             {filterStatus === 'pending' ? 'No contracts pending review.' : 'No institution contracts found.'}
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
@@ -571,7 +759,18 @@ export default function AdminInstitutionContracts() {
         )}
 
         {/* Add / Edit form */}
-        {showForm && FormPanel()}
+        {showForm && (
+          <FormPanel
+            addMode={addMode}
+            saving={saving}
+            editForm={editForm}
+            setEditForm={setEditForm}
+            editSelectedInstitutions={editSelectedInstitutions}
+            setEditSelectedInstitutions={setEditSelectedInstitutions}
+            onSave={addMode ? saveAdd : saveEdit}
+            onCancel={cancelForm}
+          />
+        )}
 
         {/* Read-only detail view */}
         {expandedId && !showForm && (() => {
@@ -592,7 +791,7 @@ export default function AdminInstitutionContracts() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Contract Number</div>
                   <div className="text-gray-700">{c.contract_number || '—'}</div>
@@ -610,13 +809,13 @@ export default function AdminInstitutionContracts() {
                   <div className="text-gray-700">{new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                 </div>
                 {c.piggyback_language && (
-                  <div className="col-span-2">
+                  <div className="col-span-full">
                     <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Authorization Language</div>
                     <div className="text-gray-700 bg-gray-50 rounded-lg p-3 text-xs leading-relaxed whitespace-pre-wrap">{c.piggyback_language}</div>
                   </div>
                 )}
                 {c.notes && (
-                  <div className="col-span-2">
+                  <div className="col-span-full">
                     <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Notes</div>
                     <div className="text-gray-700">{c.notes}</div>
                   </div>

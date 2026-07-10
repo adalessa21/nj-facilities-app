@@ -125,8 +125,8 @@ export default function AdminEntities() {
         {showForm && (
           <div className="bg-white border border-gray-200 rounded-xl p-5 mb-5">
             <h2 className="font-bold text-gray-800 mb-4">{editingEntity ? 'Edit Institution' : 'Add New Institution'}</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="col-span-full">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Institution Name *</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="e.g. Raritan Valley Community College"
@@ -191,7 +191,7 @@ export default function AdminEntities() {
         <div className="text-sm text-gray-500 mb-3">{filtered.length} institutions</div>
 
         {loading ? <div className="text-center py-12 text-gray-400">Loading...</div> : (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">

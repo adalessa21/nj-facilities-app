@@ -148,7 +148,7 @@ export default function AdminVendors() {
             <h2 className="font-bold text-gray-800 mb-4">
               {editingVendor ? 'Edit Vendor' : 'Add New Vendor'}
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 { label: 'Company Name *', key: 'company_name', placeholder: 'e.g. Envirocon LLC' },
                 { label: 'Phone', key: 'phone', placeholder: '(908) 555-0100' },
@@ -246,7 +246,7 @@ export default function AdminVendors() {
         {loading ? (
           <div className="text-center py-12 text-gray-400">Loading...</div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">

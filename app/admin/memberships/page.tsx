@@ -204,7 +204,7 @@ export default function AdminMemberships() {
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">
                     Select Co-ops * <span className="text-gray-400 font-normal normal-case">({selectedCoopIds.length} selected)</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {coops.map(c => {
                       const isChecked = selectedCoopIds.includes(c.id)
                       return (
@@ -228,7 +228,7 @@ export default function AdminMemberships() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Status</label>
                     <select
@@ -299,7 +299,7 @@ export default function AdminMemberships() {
         {loading ? (
           <div className="text-center py-12 text-gray-400">Loading...</div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">

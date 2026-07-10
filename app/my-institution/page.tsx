@@ -304,7 +304,7 @@ export default function MyInstitutionPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
             {cooperatives.map(c => {
               const isChecked = selectedCoopIds.includes(c.id)
               const s = COOP_STYLES[c.abbreviation] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' }
@@ -361,52 +361,87 @@ export default function MyInstitutionPage() {
               No shared contracts yet. Add one to let other institutions use your on-call vendors.
             </div>
           ) : (
-            <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Vendor</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Trade</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Expires</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Sharing</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myContracts.map((c, i) => {
-                    const days = daysUntil(c.expiration_date)
-                    const exp = formatDate(c.expiration_date)
-                    const isEditing = editingContractId === c.id
-                    return (
-                      <tr key={c.id} className={`border-b border-gray-100 ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-amber-50/40' : ''}`}>
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-gray-800">{c.vendor_name}</div>
+            <>
+              {/* Mobile cards — hidden on sm:+ */}
+              <div className="sm:hidden space-y-3 mb-4">
+                {myContracts.map(c => {
+                  const days = daysUntil(c.expiration_date)
+                  const exp = formatDate(c.expiration_date)
+                  return (
+                    <div key={c.id} className="bg-white border border-gray-200 rounded-lg p-3">
+                      <div className="flex justify-between items-start mb-1">
+                        <div>
+                          <div className="font-medium text-gray-800 text-sm">{c.vendor_name}</div>
                           {c.contract_number && <div className="text-xs text-gray-400 font-mono">{c.contract_number}</div>}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">{c.trade_category}</td>
-                        <td className="px-4 py-3">
-                          <div className="text-gray-600 text-xs">{exp}</div>
-                          {days === 0 && <div className="text-xs text-amber-600 font-medium">expires today</div>}
-                          {days > 0 && days < 90 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
-                          {days < 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${c.piggyback_allowed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                            {c.piggyback_allowed ? 'Yes' : 'No'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2 justify-end">
-                            <button onClick={() => openEditContract(c)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button>
-                            <button onClick={() => deleteContract(c.id, c.vendor_name)} className="text-xs text-red-500 hover:text-red-700 font-medium">Delete</button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${c.piggyback_allowed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                          {c.piggyback_allowed ? 'Sharing on' : 'No sharing'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mb-1">{c.trade_category}</div>
+                      <div className="text-xs text-gray-600 mb-2">
+                        Expires {exp}
+                        {days === 0 && <span className="text-amber-600 font-medium"> · expires today</span>}
+                        {days > 0 && days < 90 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
+                        {days < 0 && <span className="text-red-600 font-medium"> · Expired</span>}
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={() => openEditContract(c)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button>
+                        <button onClick={() => deleteContract(c.id, c.vendor_name)} className="text-xs text-red-500 hover:text-red-700 font-medium">Delete</button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Desktop table — hidden below sm: */}
+              <div className="hidden sm:block border border-gray-200 rounded-xl overflow-x-auto mb-4">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Vendor</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Trade</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Expires</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Sharing</th>
+                      <th className="px-4 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myContracts.map((c, i) => {
+                      const days = daysUntil(c.expiration_date)
+                      const exp = formatDate(c.expiration_date)
+                      const isEditing = editingContractId === c.id
+                      return (
+                        <tr key={c.id} className={`border-b border-gray-100 ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-amber-50/40' : ''}`}>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-800">{c.vendor_name}</div>
+                            {c.contract_number && <div className="text-xs text-gray-400 font-mono">{c.contract_number}</div>}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 text-xs">{c.trade_category}</td>
+                          <td className="px-4 py-3">
+                            <div className="text-gray-600 text-xs">{exp}</div>
+                            {days === 0 && <div className="text-xs text-amber-600 font-medium">expires today</div>}
+                            {days > 0 && days < 90 && <div className="text-xs text-amber-600 font-medium">{days} days left</div>}
+                            {days < 0 && <div className="text-xs text-red-600 font-medium">Expired</div>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${c.piggyback_allowed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                              {c.piggyback_allowed ? 'Yes' : 'No'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2 justify-end">
+                              <button onClick={() => openEditContract(c)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button>
+                              <button onClick={() => deleteContract(c.id, c.vendor_name)} className="text-xs text-red-500 hover:text-red-700 font-medium">Delete</button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           {/* Inline add / edit form */}
@@ -417,7 +452,7 @@ export default function MyInstitutionPage() {
                 <button onClick={cancelContractForm} className="text-gray-400 hover:text-gray-600 text-sm border border-gray-200 rounded px-2 py-0.5">✕ Cancel</button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className={labelCls}>Vendor Name *</label>
                   <input type="text" value={contractForm.vendor_name}
@@ -466,7 +501,7 @@ export default function MyInstitutionPage() {
                     </button>
                   </div>
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-full">
                   <label className={labelCls}>Authorization Language</label>
                   <textarea value={contractForm.piggyback_language}
                     onChange={e => setContractForm(f => ({ ...f, piggyback_language: e.target.value }))}
