@@ -205,7 +205,7 @@ const emptyForm = {
   // Quick extend by 1 year
   async function extendOneYear(group: GroupedContractRow) {
     const current = parseLocalDate(group.expiration_date)
-    current.setFullYear(current.getFullYear() + 1)
+    current.setUTCFullYear(current.getUTCFullYear() + 1) // use UTC to match parseLocalDate's UTC midnight representation
     const newDate = dateToString(current)
     const { error } = await adminUpdate('contracts', { ids: group.contractIds }, { expiration_date: newDate, status: 'extended' })
     if (error) { alert('Error: ' + error.message); return }
