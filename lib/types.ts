@@ -44,4 +44,7 @@ export interface GroupedContract {
   piggyback_language?: string
   authorized_users?: string
   insurance_requirements?: string
+  verified_at?: string
+  statutory_basis?: string
+  dlgs_registration_number?: string
 }

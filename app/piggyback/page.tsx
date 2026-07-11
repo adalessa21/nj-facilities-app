@@ -6,6 +6,13 @@ import { supabaseAuth } from '@/lib/supabase-auth'
 import Link from 'next/link'
 import { inputCls, labelCls } from '@/lib/ui'
 
+const STATUTORY_BASIS_OPTIONS = [
+  'DLGS-registered cooperative pricing system',
+  'Joint purchasing agreement (N.J.S.A. 40A:11-10)',
+  'County cooperative contract purchasing (N.J.S.A. 40A:11-11(6))',
+  'Other — describe in notes',
+]
+
 const TRADES = [
   'Automotive Parts','Doors & Hardware','Electrical','Elevator','Equipment Rental','Fencing',
   'Fire Alarm','Fire Protection','Fleet Maintenance','Fleet Vehicles','Flooring',
@@ -75,7 +82,9 @@ export default function PiggybackSubmit() {
     expiration_date: '',
     piggyback_allowed: true,
     piggyback_language: '',
-    authorized_users: 'Any NJ public entity',
+    authorized_users: '',
+    statutory_basis: '',
+    dlgs_registration_number: '',
     insurance_requirements: '',
     notes: '',
     submitter_name: '',
@@ -96,8 +105,18 @@ export default function PiggybackSubmit() {
       return
     }
 
+    if (!form.authorized_users) {
+      setError('Please choose who is authorized to use this contract.')
+      return
+    }
+
     if (form.authorized_users === 'Specific institutions only' && selectedInstitutions.length === 0) {
       setError('Please select at least one authorized institution.')
+      return
+    }
+
+    if (!form.statutory_basis) {
+      setError('Please select the statutory basis for sharing this contract.')
       return
     }
 
@@ -122,6 +141,8 @@ export default function PiggybackSubmit() {
       notes: form.notes || null,
       submitter_name: form.submitter_name,
       submitter_email: form.submitter_email,
+      statutory_basis: form.statutory_basis || null,
+      dlgs_registration_number: form.dlgs_registration_number || null,
     })
 
     setSaving(false)
@@ -152,7 +173,7 @@ export default function PiggybackSubmit() {
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <button
-                onClick={() => { setSubmitted(false); setSelectedInstitutions([]); setForm({ institution_name: '', vendor_name: '', trade_category: '', contract_number: '', start_date: '', expiration_date: '', piggyback_allowed: true, piggyback_language: '', authorized_users: 'Any NJ public entity', insurance_requirements: '', notes: '', submitter_name: '', submitter_email: '' }) }}
+                onClick={() => { setSubmitted(false); setSelectedInstitutions([]); setForm({ institution_name: '', vendor_name: '', trade_category: '', contract_number: '', start_date: '', expiration_date: '', piggyback_allowed: true, piggyback_language: '', authorized_users: '', statutory_basis: '', dlgs_registration_number: '', insurance_requirements: '', notes: '', submitter_name: '', submitter_email: '' }) }}
                 className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg"
               >
                 Submit another
@@ -287,7 +308,7 @@ export default function PiggybackSubmit() {
               </div>
             </div>
             <div>
-              <label className={labelCls}>Authorized Users</label>
+              <label className={labelCls}>Authorized Users *</label>
               <select
                 value={form.authorized_users}
                 onChange={e => {
@@ -295,7 +316,9 @@ export default function PiggybackSubmit() {
                   if (e.target.value === 'Any NJ public entity') setSelectedInstitutions([])
                 }}
                 className={inputCls}
+                required
               >
+                <option value="" disabled>Select who can use this contract...</option>
                 <option value="Any NJ public entity">Any NJ public entity</option>
                 <option value="Specific institutions only">Specific institutions only</option>
               </select>
@@ -351,6 +374,21 @@ export default function PiggybackSubmit() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+            <div className="col-span-full">
+              <label className={labelCls}>Statutory Basis *</label>
+              <select value={form.statutory_basis} onChange={e => update('statutory_basis', e.target.value)} className={inputCls} required>
+                <option value="" disabled>Select statutory basis...</option>
+                {STATUTORY_BASIS_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">NJ law generally requires inter-entity purchasing to run through mechanisms approved by the Division of Local Government Services. Consult your purchasing counsel.</p>
+            </div>
+            {form.statutory_basis === STATUTORY_BASIS_OPTIONS[0] && (
+              <div className="col-span-full">
+                <label className={labelCls}>DLGS Registration Number</label>
+                <input type="text" value={form.dlgs_registration_number} onChange={e => update('dlgs_registration_number', e.target.value)}
+                  placeholder="e.g. CPS-12345" className={inputCls} />
               </div>
             )}
             <div className="col-span-full">

@@ -15,6 +15,9 @@ interface Contract {
   expiration_date: string
   notes: string
   source_url: string
+  verified_at?: string
+  verified_by?: string
+  award_doc_url?: string
   vendor_id: string
   cooperative_id: string
   vendors: { company_name: string }
@@ -41,6 +44,9 @@ interface GroupedContractRow {
   expiration_date: string
   notes: string
   source_url: string
+  verified_at: string
+  verified_by: string
+  award_doc_url: string
   cooperative_id: string
   coopAbbr: string
   vendorNames: string[]
@@ -70,6 +76,9 @@ const emptyForm = {
     expiration_date: '',
     notes: '',
     source_url: '',
+    verified_at: '',
+    verified_by: '',
+    award_doc_url: '',
   }
   const [form, setForm] = useState(emptyForm)
   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([])
@@ -104,6 +113,9 @@ const emptyForm = {
           expiration_date: c.expiration_date,
           notes: c.notes || '',
           source_url: c.source_url || '',
+          verified_at: c.verified_at || '',
+          verified_by: c.verified_by || '',
+          award_doc_url: c.award_doc_url || '',
           cooperative_id: c.cooperative_id,
           coopAbbr: c.cooperatives?.abbreviation || '',
           vendorNames: [],
@@ -137,6 +149,9 @@ const emptyForm = {
       expiration_date: group.expiration_date?.split('T')[0] || '',
       notes: group.notes || '',
       source_url: group.source_url || '',
+      verified_at: group.verified_at?.split('T')[0] || '',
+      verified_by: group.verified_by || '',
+      award_doc_url: group.award_doc_url || '',
     })
     // Pre-select vendors in this group
     const preSelected = vendors
@@ -184,6 +199,9 @@ const emptyForm = {
       expiration_date: form.expiration_date,
       notes: form.notes,
       source_url: form.source_url || null,
+      verified_at: form.verified_at || null,
+      verified_by: form.verified_by || null,
+      award_doc_url: form.award_doc_url || null,
     }))
 
     const { error } = await adminInsert('contracts', inserts)
@@ -357,6 +375,21 @@ const emptyForm = {
                   className={inputCls}
                 />
                 <p className="text-xs text-gray-400 mt-1">Direct link to the co-op's page for this contract. Users click "View source →" to go there.</p>
+              </div>
+              <div className="col-span-full">
+                <label className={labelCls}>Award Document URL</label>
+                <input type="text" value={form.award_doc_url || ''} onChange={e => setForm({ ...form, award_doc_url: e.target.value })}
+                  placeholder="e.g. https://escnj.us/bid-tab-hvac-2324.pdf" className={inputCls} />
+                <p className="text-xs text-gray-400 mt-1">URL to the public bid tab or award document published by the cooperative.</p>
+              </div>
+              <div>
+                <label className={labelCls}>Verified Date</label>
+                <input type="date" value={form.verified_at || ''} onChange={e => setForm({ ...form, verified_at: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Verified By</label>
+                <input type="text" value={form.verified_by || ''} onChange={e => setForm({ ...form, verified_by: e.target.value })}
+                  placeholder="e.g. Procurement office" className={inputCls} />
               </div>
             </div>
 

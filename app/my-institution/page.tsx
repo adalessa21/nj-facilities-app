@@ -8,6 +8,13 @@ import { formatDate, daysUntil } from '@/lib/dates'
 import { inputCls, labelCls } from '@/lib/ui'
 import Link from 'next/link'
 
+const STATUTORY_BASIS_OPTIONS = [
+  'DLGS-registered cooperative pricing system',
+  'Joint purchasing agreement (N.J.S.A. 40A:11-10)',
+  'County cooperative contract purchasing (N.J.S.A. 40A:11-11(6))',
+  'Other — describe in notes',
+]
+
 const TRADES = [
   'Automotive Parts','Doors & Hardware','Electrical','Elevator','Equipment Rental','Fencing',
   'Fire Alarm','Fire Protection','Fleet Maintenance','Fleet Vehicles','Flooring',
@@ -55,6 +62,8 @@ interface ContractForm {
   piggyback_allowed: boolean
   piggyback_language: string
   authorized_users: string
+  statutory_basis: string
+  dlgs_registration_number: string
   insurance_requirements: string
   notes: string
 }
@@ -67,7 +76,9 @@ const emptyContractForm: ContractForm = {
   expiration_date: '',
   piggyback_allowed: true,
   piggyback_language: '',
-  authorized_users: 'Any NJ public entity',
+  authorized_users: '',
+  statutory_basis: '',
+  dlgs_registration_number: '',
   insurance_requirements: '',
   notes: '',
 }
@@ -190,7 +201,9 @@ export default function MyInstitutionPage() {
       expiration_date: c.expiration_date ? c.expiration_date.split('T')[0] : '',
       piggyback_allowed: c.piggyback_allowed,
       piggyback_language: c.piggyback_language || '',
-      authorized_users: c.authorized_users || 'Any NJ public entity',
+      authorized_users: c.authorized_users || '',
+      statutory_basis: (c as any).statutory_basis || '',
+      dlgs_registration_number: (c as any).dlgs_registration_number || '',
       insurance_requirements: c.insurance_requirements || '',
       notes: c.notes || '',
     })
@@ -231,6 +244,8 @@ export default function MyInstitutionPage() {
       piggyback_allowed: contractForm.piggyback_allowed,
       piggyback_language: contractForm.piggyback_language || null,
       authorized_users: contractForm.authorized_users || null,
+      statutory_basis: contractForm.statutory_basis || null,
+      dlgs_registration_number: contractForm.dlgs_registration_number || null,
       insurance_requirements: contractForm.insurance_requirements || null,
       notes: contractForm.notes || null,
     }
@@ -501,6 +516,24 @@ export default function MyInstitutionPage() {
                     </button>
                   </div>
                 </div>
+                <div className="col-span-full">
+                  <label className={labelCls}>Statutory Basis *</label>
+                  <select value={contractForm.statutory_basis}
+                    onChange={e => setContractForm(f => ({ ...f, statutory_basis: e.target.value }))}
+                    className={inputCls}>
+                    <option value="" disabled>Select statutory basis...</option>
+                    {STATUTORY_BASIS_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">NJ law generally requires inter-entity purchasing to run through mechanisms approved by the Division of Local Government Services. Consult your purchasing counsel.</p>
+                </div>
+                {contractForm.statutory_basis === STATUTORY_BASIS_OPTIONS[0] && (
+                  <div className="col-span-full">
+                    <label className={labelCls}>DLGS Registration Number</label>
+                    <input type="text" value={contractForm.dlgs_registration_number}
+                      onChange={e => setContractForm(f => ({ ...f, dlgs_registration_number: e.target.value }))}
+                      placeholder="e.g. CPS-12345" className={inputCls} />
+                  </div>
+                )}
                 <div className="col-span-full">
                   <label className={labelCls}>Authorization Language</label>
                   <textarea value={contractForm.piggyback_language}

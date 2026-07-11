@@ -31,7 +31,7 @@ const getContractData = cache(async (id: string) => {
   // Cooperative contract — first fetch the row to get contract_number + cooperative_id
   const { data: row } = await supabase
     .from('contracts')
-    .select('id, contract_name, contract_number, trade_category, status, expiration_date, notes, cooperative_id, source_url, cooperatives(id, name, abbreviation, display_color)')
+    .select('id, contract_name, contract_number, trade_category, status, expiration_date, notes, cooperative_id, source_url, verified_at, cooperatives(id, name, abbreviation, display_color)')
     .eq('id', id)
     .single()
 
@@ -196,12 +196,31 @@ export default async function ContractDetailPage({ params }: Params) {
                   <dd className="text-gray-700">{d.insurance_requirements}</dd>
                 </div>
               )}
+              {(d as any).statutory_basis && (
+                <div className="col-span-full">
+                  <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Statutory Basis</dt>
+                  <dd className="text-gray-700">{(d as any).statutory_basis}</dd>
+                </div>
+              )}
+              {(d as any).dlgs_registration_number && (
+                <div>
+                  <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0.5">DLGS Registration #</dt>
+                  <dd className="text-gray-700 font-mono">{(d as any).dlgs_registration_number}</dd>
+                </div>
+              )}
               {d.notes && (
                 <div className="col-span-full">
                   <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Notes</dt>
                   <dd className="text-gray-700">{d.notes}</dd>
                 </div>
               )}
+              <div className="col-span-full pt-1">
+                {(d as any).verified_at ? (
+                  <p className="text-xs text-gray-400">✓ Verified {formatDate((d as any).verified_at)}</p>
+                ) : (
+                  <p className="text-xs text-amber-600">Unverified — confirm current terms with the lead agency before purchasing</p>
+                )}
+              </div>
             </dl>
 
             {/* Authorization language */}
@@ -280,6 +299,13 @@ export default async function ContractDetailPage({ params }: Params) {
                 <dd className="text-gray-700">{row.notes}</dd>
               </div>
             )}
+            <div className="col-span-full pt-1">
+              {(row as any).verified_at ? (
+                <p className="text-xs text-gray-400">✓ Verified {formatDate((row as any).verified_at)}</p>
+              ) : (
+                <p className="text-xs text-amber-600">Unverified — confirm current terms with the cooperative before purchasing</p>
+              )}
+            </div>
           </dl>
 
           {/* Source link */}

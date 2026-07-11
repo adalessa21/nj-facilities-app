@@ -4,7 +4,15 @@ import { useState, useEffect } from 'react'
 import { adminGet, adminInsert, adminUpdate, adminDelete } from '@/lib/admin-client'
 import { formatDate, daysUntil } from '@/lib/dates'
 import { inputCls, labelCls } from '@/lib/ui'
+import type { Entity } from '@/lib/types'
 import Link from 'next/link'
+
+const STATUTORY_BASIS_OPTIONS = [
+  'DLGS-registered cooperative pricing system',
+  'Joint purchasing agreement (N.J.S.A. 40A:11-10)',
+  'County cooperative contract purchasing (N.J.S.A. 40A:11-11(6))',
+  'Other — describe in notes',
+]
 
 const TRADES = [
   'Automotive Parts','Doors & Hardware','Electrical','Elevator','Equipment Rental','Fencing',
@@ -54,6 +62,7 @@ interface InstitutionContract {
 }
 
 interface EditForm {
+  entity_id: string
   institution_name: string
   vendor_name: string
   trade_category: string
@@ -61,16 +70,20 @@ interface EditForm {
   start_date: string
   expiration_date: string
   piggyback_allowed: boolean
-  // 'Any NJ public entity' | 'Specific institutions only'
   authorized_users_mode: string
   piggyback_language: string
   insurance_requirements: string
+  statutory_basis: string
+  dlgs_registration_number: string
   notes: string
   submitter_name: string
   submitter_email: string
+  verified_at: string
+  verified_by: string
 }
 
 const emptyForm: EditForm = {
+  entity_id: '',
   institution_name: '',
   vendor_name: '',
   trade_category: '',
@@ -81,9 +94,13 @@ const emptyForm: EditForm = {
   authorized_users_mode: 'Any NJ public entity',
   piggyback_language: '',
   insurance_requirements: '',
+  statutory_basis: '',
+  dlgs_registration_number: '',
   notes: '',
   submitter_name: '',
   submitter_email: '',
+  verified_at: '',
+  verified_by: '',
 }
 
 // ── FormPanel — module-level so React tracks it as a stable component type,
@@ -96,6 +113,7 @@ interface FormPanelProps {
   setEditForm: React.Dispatch<React.SetStateAction<EditForm>>
   editSelectedInstitutions: string[]
   setEditSelectedInstitutions: React.Dispatch<React.SetStateAction<string[]>>
+  entities: Entity[]
   onSave: () => void
   onCancel: () => void
 }
@@ -103,7 +121,7 @@ interface FormPanelProps {
 function FormPanel({
   addMode, saving, editForm, setEditForm,
   editSelectedInstitutions, setEditSelectedInstitutions,
-  onSave, onCancel,
+  entities, onSave, onCancel,
 }: FormPanelProps) {
   return (
     <div className={`mt-4 bg-white border rounded-xl p-5 ${addMode ? 'border-gray-200' : 'border-amber-200'}`}>
@@ -114,10 +132,20 @@ function FormPanel({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
-          <label className={labelCls}>Institution Name *</label>
-          <input type="text" value={editForm.institution_name}
-            onChange={e => setEditForm(f => ({ ...f, institution_name: e.target.value }))}
-            placeholder="e.g. Rutgers University" className={inputCls} />
+          <label className={labelCls}>Institution *</label>
+          <select value={editForm.entity_id}
+            onChange={e => {
+              const ent = entities.find(en => en.id === e.target.value)
+              setEditForm(f => ({ ...f, entity_id: e.target.value, institution_name: ent?.name ?? '' }))
+            }}
+            className={inputCls}>
+            <option value="">— select institution —</option>
+            {entities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select>
+          {/* Legacy: entity_id not resolved — show the stored name so it's visible */}
+          {!editForm.entity_id && editForm.institution_name && (
+            <p className="text-xs text-amber-600 mt-1">Stored value: "{editForm.institution_name}" — select an institution above to link this record</p>
+          )}
         </div>
         <div>
           <label className={labelCls}>Vendor Name *</label>
@@ -255,6 +283,35 @@ function FormPanel({
             onChange={e => setEditForm(f => ({ ...f, submitter_email: e.target.value }))}
             placeholder="e.g. jsmith@rutgers.edu" className={inputCls} />
         </div>
+        <div className="col-span-full">
+          <label className={labelCls}>Statutory Basis</label>
+          <select value={editForm.statutory_basis}
+            onChange={e => setEditForm(f => ({ ...f, statutory_basis: e.target.value }))}
+            className={inputCls}>
+            <option value="">Not specified</option>
+            {STATUTORY_BASIS_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+        {editForm.statutory_basis === STATUTORY_BASIS_OPTIONS[0] && (
+          <div>
+            <label className={labelCls}>DLGS Registration #</label>
+            <input type="text" value={editForm.dlgs_registration_number}
+              onChange={e => setEditForm(f => ({ ...f, dlgs_registration_number: e.target.value }))}
+              placeholder="e.g. CPS-12345" className={inputCls} />
+          </div>
+        )}
+        <div>
+          <label className={labelCls}>Verified Date</label>
+          <input type="date" value={editForm.verified_at}
+            onChange={e => setEditForm(f => ({ ...f, verified_at: e.target.value }))}
+            className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Verified By</label>
+          <input type="text" value={editForm.verified_by}
+            onChange={e => setEditForm(f => ({ ...f, verified_by: e.target.value }))}
+            placeholder="e.g. Purchasing office" className={inputCls} />
+        </div>
       </div>
 
       <div className="flex gap-3">
@@ -276,6 +333,7 @@ function FormPanel({
 
 export default function AdminInstitutionContracts() {
   const [contracts, setContracts] = useState<InstitutionContract[]>([])
+  const [entities, setEntities] = useState<Entity[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved'>('all')
   const [message, setMessage] = useState('')
@@ -290,13 +348,18 @@ export default function AdminInstitutionContracts() {
 
   const showForm = addMode || editingId !== null
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData(); loadEntities() }, [])
 
   async function loadData() {
     setLoading(true)
     const { data } = await adminGet<InstitutionContract>('institution_contracts', { order: 'created_at', asc: false })
     if (data) setContracts(data)
     setLoading(false)
+  }
+
+  async function loadEntities() {
+    const { data } = await adminGet<Entity>('entities', { select: 'id,name,type', order: 'name' })
+    if (data) setEntities(data)
   }
 
   async function approve(id: string) {
@@ -333,7 +396,12 @@ export default function AdminInstitutionContracts() {
 
   function openEdit(c: InstitutionContract) {
     const { mode, selected } = parseAuthorizedUsers(c.authorized_users)
+    // Resolve entity_id: use stored entity_id, or match by name, or leave empty (legacy)
+    const resolvedEntityId = (c as any).entity_id
+      || entities.find(e => e.name === c.institution_name)?.id
+      || ''
     setEditForm({
+      entity_id: resolvedEntityId,
       institution_name: c.institution_name,
       vendor_name: c.vendor_name,
       trade_category: c.trade_category,
@@ -347,6 +415,10 @@ export default function AdminInstitutionContracts() {
       notes: c.notes || '',
       submitter_name: c.submitter_name || '',
       submitter_email: c.submitter_email || '',
+      statutory_basis: (c as any).statutory_basis || '',
+      dlgs_registration_number: (c as any).dlgs_registration_number || '',
+      verified_at: (c as any).verified_at?.split('T')[0] || '',
+      verified_by: (c as any).verified_by || '',
     })
     setEditSelectedInstitutions(selected)
     setEditingId(c.id)
@@ -389,6 +461,7 @@ export default function AdminInstitutionContracts() {
     }
     setSaving(true)
     const updatePayload = {
+      entity_id: editForm.entity_id || null,
       institution_name: editForm.institution_name,
       vendor_name: editForm.vendor_name,
       trade_category: editForm.trade_category,
@@ -402,6 +475,10 @@ export default function AdminInstitutionContracts() {
       notes: editForm.notes || null,
       submitter_name: editForm.submitter_name || null,
       submitter_email: editForm.submitter_email || null,
+      statutory_basis: editForm.statutory_basis || null,
+      dlgs_registration_number: editForm.dlgs_registration_number || null,
+      verified_at: editForm.verified_at || null,
+      verified_by: editForm.verified_by || null,
     }
     const { error } = await adminUpdate('institution_contracts', { id: editingId! }, updatePayload)
     setSaving(false)
@@ -422,6 +499,7 @@ export default function AdminInstitutionContracts() {
     }
     setSaving(true)
     const insertPayload = {
+      entity_id: editForm.entity_id || null,
       institution_name: editForm.institution_name,
       vendor_name: editForm.vendor_name,
       trade_category: editForm.trade_category,
@@ -435,6 +513,10 @@ export default function AdminInstitutionContracts() {
       notes: editForm.notes || null,
       submitter_name: editForm.submitter_name || null,
       submitter_email: editForm.submitter_email || null,
+      statutory_basis: editForm.statutory_basis || null,
+      dlgs_registration_number: editForm.dlgs_registration_number || null,
+      verified_at: editForm.verified_at || null,
+      verified_by: editForm.verified_by || null,
     }
     const { error } = await adminInsert('institution_contracts', insertPayload)
     setSaving(false)
@@ -593,6 +675,7 @@ export default function AdminInstitutionContracts() {
             setEditForm={setEditForm}
             editSelectedInstitutions={editSelectedInstitutions}
             setEditSelectedInstitutions={setEditSelectedInstitutions}
+            entities={entities}
             onSave={addMode ? saveAdd : saveEdit}
             onCancel={cancelForm}
           />

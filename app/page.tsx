@@ -25,7 +25,7 @@ async function fetchInitialData() {
       .from('contracts')
       .select(`
         id, contract_name, contract_number, trade_category,
-        status, expiration_date, notes, cooperative_id, source_url,
+        status, expiration_date, notes, cooperative_id, source_url, verified_at,
         vendors ( id, company_name, phone, email, website, listing_tier, cert_url ),
         cooperatives ( id, name, abbreviation, display_color )
       `)
@@ -58,6 +58,7 @@ async function fetchInitialData() {
         notes: row.notes,
         cooperative_id: row.cooperative_id,
         source_url: row.source_url || '',
+        verified_at: row.verified_at ?? undefined,
         vendorList: [],
         coop,
         source: 'cooperative',
@@ -85,6 +86,9 @@ async function fetchInitialData() {
       piggyback_language: row.piggyback_language,
       authorized_users: row.authorized_users,
       insurance_requirements: row.insurance_requirements,
+      verified_at: row.verified_at ?? undefined,
+      statutory_basis: row.statutory_basis ?? undefined,
+      dlgs_registration_number: row.dlgs_registration_number ?? undefined,
     }
   })
 

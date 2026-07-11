@@ -8,6 +8,12 @@ import { parseLocalDate, formatDate, daysUntil, localToday } from '@/lib/dates'
 import { normalizeUrl } from '@/lib/utils'
 import type { Entity, Cooperative, Vendor, GroupedContract } from '@/lib/types'
 
+// Returns true when the selected institution is permitted to use this shared contract.
+function isAuthorizedForInstitution(authorizedUsers: string | undefined, institutionName: string): boolean {
+  if (!authorizedUsers || authorizedUsers === 'Any NJ public entity') return true
+  return authorizedUsers.split(',').map(s => s.trim()).includes(institutionName)
+}
+
 // ── Local-only types ───────────────────────────────────────────────────────────
 interface Contract {
   id: string
@@ -60,11 +66,17 @@ function VendorPanel({
 }) {
   const allVendorContracts = contracts.filter(c => c.vendorList.some(v => v.id === vendor.id))
   const eligible = allVendorContracts.filter(c => {
-    if (c.coop?.abbreviation === 'Shared Contract') return c.coop?.name === entityName
+    if (c.coop?.abbreviation === 'Shared Contract') {
+      if (c.coop?.name === entityName) return true // lead institution
+      return isAuthorizedForInstitution(c.authorized_users, entityName ?? '')
+    }
     return entityMemberships.includes(c.cooperative_id)
   })
   const ineligible = allVendorContracts.filter(c => {
-    if (c.coop?.abbreviation === 'Shared Contract') return false
+    if (c.coop?.abbreviation === 'Shared Contract') {
+      if (c.coop?.name === entityName) return false
+      return !isAuthorizedForInstitution(c.authorized_users, entityName ?? '')
+    }
     return !entityMemberships.includes(c.cooperative_id)
   })
   const trades = [...new Set(allVendorContracts.map(c => c.trade_category))]
@@ -363,7 +375,7 @@ export default function HomeClient({
     if (showCoopContracts) {
       let q = supabase
         .from('contracts')
-        .select(`id, contract_name, contract_number, trade_category, status, expiration_date, notes, cooperative_id, source_url, vendors ( id, company_name, phone, email, website, listing_tier, cert_url ), cooperatives ( id, name, abbreviation, display_color )`)
+        .select(`id, contract_name, contract_number, trade_category, status, expiration_date, notes, cooperative_id, source_url, verified_at, vendors ( id, company_name, phone, email, website, listing_tier, cert_url ), cooperatives ( id, name, abbreviation, display_color )`)
         .in('status', ['active', 'extended'])
         .order('expiration_date', { ascending: true })
 
@@ -389,7 +401,7 @@ export default function HomeClient({
             const coop = (Array.isArray(row.cooperatives) ? row.cooperatives[0] : row.cooperatives) as Cooperative
             const vendor = (Array.isArray(row.vendors) ? row.vendors[0] : row.vendors) as Vendor
             if (!grouped[key]) {
-              grouped[key] = { id: row.id, contract_name: row.contract_name, contract_number: row.contract_number, trade_category: row.trade_category, status: row.status, expiration_date: row.expiration_date, notes: row.notes, cooperative_id: row.cooperative_id, source_url: (row as any).source_url || '', vendorList: [], coop, source: 'cooperative' }
+              grouped[key] = { id: row.id, contract_name: row.contract_name, contract_number: row.contract_number, trade_category: row.trade_category, status: row.status, expiration_date: row.expiration_date, notes: row.notes, cooperative_id: row.cooperative_id, source_url: (row as any).source_url || '', verified_at: (row as any).verified_at ?? undefined, vendorList: [], coop, source: 'cooperative' }
             }
             if (vendor && !grouped[key].vendorList.find(v => v.id === vendor.id)) {
               grouped[key].vendorList.push(vendor)
@@ -421,6 +433,9 @@ export default function HomeClient({
           piggyback_language: row.piggyback_language,
           authorized_users: row.authorized_users,
           insurance_requirements: row.insurance_requirements,
+          verified_at: row.verified_at ?? undefined,
+          statutory_basis: row.statutory_basis ?? undefined,
+          dlgs_registration_number: row.dlgs_registration_number ?? undefined,
         }
       })
     }
@@ -524,6 +539,11 @@ export default function HomeClient({
         </div>
 
         {c.notes && <div className="text-xs text-gray-400 mb-2">{c.notes}</div>}
+        {c.verified_at ? (
+          <div className="text-xs text-gray-400 mb-2">✓ Verified {formatDate(c.verified_at)}</div>
+        ) : (
+          <div className="text-xs text-amber-600 mb-2">Unverified — confirm current terms with the cooperative before purchasing</div>
+        )}
         {!!(c as any).source_url && (
           <div className="mb-2">
             <a href={(c as any).source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800 underline underline-offset-2">
@@ -562,10 +582,15 @@ export default function HomeClient({
                 <span>⭐</span>
                 <span>This is {c.institution_name}'s contract — other institutions can use it</span>
               </div>
-            ) : (
+            ) : isAuthorizedForInstitution(c.authorized_users, selectedEntity.name) ? (
               <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg">
                 <span>✓</span>
                 <span>{selectedEntity.name} can use this via {c.institution_name} — shared on-call contract</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+                <span>🔒</span>
+                <span>Restricted — not authorized for {selectedEntity.name}</span>
               </div>
             )
           ) : (
