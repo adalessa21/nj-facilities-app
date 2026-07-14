@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { formatDate, daysUntil, localToday } from '@/lib/dates'
 import { normalizeUrl } from '@/lib/utils'
 import { CopyButton } from './copy-button'
+import WatchButton from '@/components/watch-button'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -131,7 +132,10 @@ export default async function ContractDetailPage({ params }: Params) {
             <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform</div>
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-xl font-bold leading-snug">{d.vendor_name} — On-Call {d.trade_category}</h1>
-              <CopyButton text={pageUrl} label="Copy link" />
+              <div className="flex items-center gap-2 shrink-0">
+                <WatchButton contractId={d.id} contractType="institution" />
+                <CopyButton text={pageUrl} label="Copy link" />
+              </div>
             </div>
             <p className="text-white/60 text-sm mt-1">Shared contract by {d.institution_name}</p>
           </div>
@@ -253,7 +257,10 @@ export default async function ContractDetailPage({ params }: Params) {
           <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform</div>
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-xl font-bold leading-snug">{row.contract_name}</h1>
-            <CopyButton text={pageUrl} label="Copy link" />
+            <div className="flex items-center gap-2 shrink-0">
+              <WatchButton contractId={row.id} contractType="cooperative" />
+              <CopyButton text={pageUrl} label="Copy link" />
+            </div>
           </div>
           <p className="text-white/60 text-sm mt-1">{coopLabel} · {row.trade_category}</p>
         </div>

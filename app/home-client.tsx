@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { parseLocalDate, formatDate, daysUntil, localToday } from '@/lib/dates'
 import { normalizeUrl } from '@/lib/utils'
 import type { Entity, Cooperative, Vendor, GroupedContract } from '@/lib/types'
+import WatchButton from '@/components/watch-button'
 
 // Returns true when the selected institution is permitted to use this shared contract.
 function isAuthorizedForInstitution(authorizedUsers: string | undefined, institutionName: string): boolean {
@@ -525,7 +526,10 @@ export default function HomeClient({
               ) : <CoopBadge abbr={coopAbbr} />}
             </div>
           </div>
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${badgeClass}`}>{badgeLabel}</span>
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${badgeClass}`}>{badgeLabel}</span>
+            <WatchButton contractId={c.id} contractType={c.source === 'institution' ? 'institution' : 'cooperative'} />
+          </div>
         </div>
 
         <div className="flex gap-4 text-xs text-gray-400 mb-2">
@@ -629,6 +633,9 @@ export default function HomeClient({
             {user ? (
               <div className="flex items-center gap-3">
                 <span className="text-xs text-white/50 hidden sm:block">{user.email}</span>
+                <Link href="/watchlist" className="text-xs text-white/70 hover:text-white border border-white/30 hover:border-white/60 rounded px-2.5 py-1 transition-colors">
+                  My Watchlist
+                </Link>
                 <button onClick={() => { supabaseAuth.auth.signOut(); setSelectedEntity(null); setAutoDetected(false) }}
                   className="text-xs text-white/70 hover:text-white border border-white/30 hover:border-white/60 rounded px-2.5 py-1 transition-colors">
                   Sign out
