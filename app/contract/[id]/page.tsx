@@ -7,6 +7,7 @@ import { formatDate, daysUntil, localToday } from '@/lib/dates'
 import { normalizeUrl } from '@/lib/utils'
 import { CopyButton } from './copy-button'
 import WatchButton from '@/components/watch-button'
+import { SITE_URL } from '@/lib/site'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -118,8 +119,7 @@ export default async function ContractDetailPage({ params }: Params) {
   const result = await getContractData(id)
   if (!result) notFound()
 
-  const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nj-facilities-app.vercel.app'
-  const pageUrl = `${BASE_URL}/contract/${id}`
+  const pageUrl = `${SITE_URL}/contract/${id}`
 
   if (result.kind === 'shared') {
     const d = result.data

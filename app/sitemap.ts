@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { localToday } from '@/lib/dates'
+import { SITE_URL } from '@/lib/site'
 
-const BASE = 'https://nj-facilities-app.vercel.app'
+const BASE = SITE_URL
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Use a direct client (no cookies needed — all data is public-read)

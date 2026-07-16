@@ -2,8 +2,9 @@ import { NextRequest } from 'next/server'
 import { Resend } from 'resend'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { daysUntil, formatDate } from '@/lib/dates'
+import { SITE_URL } from '@/lib/site'
 
-const BASE_URL = 'https://nj-facilities-app.vercel.app'
+const BASE_URL = SITE_URL
 const THRESHOLDS = [7, 30, 90] as const
 
 type Threshold = (typeof THRESHOLDS)[number]

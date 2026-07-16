@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SiteFooter from "@/components/site-footer";
+import { SITE_URL } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,6 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "NJ Facilities Procurement Platform — Cooperative Contract Search for NJ Public Institutions",
   description: "Search cooperative contracts from ESCNJ, NJ State Contract, Sourcewell, OMNIA, Bergen Co-op, and more for NJ public colleges, universities, and county governments.",
   verification: {
