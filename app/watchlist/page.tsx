@@ -125,7 +125,7 @@ export default function WatchlistPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-[#1F3864] text-white">
         <div className="max-w-3xl mx-auto px-4 py-5">
-          <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform</div>
+          <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Vetted Vendors</div>
           <h1 className="text-xl font-bold">My Watchlist</h1>
           <p className="text-white/60 text-sm mt-1">Contracts you&apos;re tracking for expiration alerts</p>
         </div>

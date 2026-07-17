@@ -35,8 +35,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-[#1F3864] text-white">
         <div className="max-w-4xl mx-auto px-4 py-5">
-          <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform · Beta</div>
-          <h1 className="text-xl font-bold">Sign in to NJ Facilities</h1>
+          <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Vetted Vendors · Beta</div>
+          <h1 className="text-xl font-bold">Sign in to NJ Vetted Vendors</h1>
         </div>
       </header>
 

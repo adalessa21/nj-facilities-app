@@ -77,7 +77,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div>
       <div className="bg-gray-900 text-white px-4 py-2 flex items-center justify-between text-xs">
-        <span className="text-gray-400">🔐 Admin Portal — NJ Facilities Procurement Platform</span>
+        <span className="text-gray-400">🔐 Admin Portal — NJ Vetted Vendors</span>
         <div className="flex items-center gap-3">
           <span className="text-gray-500 hidden sm:block">{sessionEmail}</span>
           <button

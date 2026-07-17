@@ -56,7 +56,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-[#1F3864] text-white px-6 py-5">
         <div className="max-w-5xl mx-auto">
-          <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform</div>
+          <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Vetted Vendors</div>
           <h1 className="text-2xl font-bold">Admin Portal</h1>
           <p className="text-white/60 text-sm mt-1">Manage all platform data — institutions, co-ops, vendors, contracts, and memberships</p>
         </div>

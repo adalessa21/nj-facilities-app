@@ -6,7 +6,7 @@ export default function SiteFooter() {
         eligibility determination. Verify current pricing, terms, and cooperative membership
         requirements with the issuing cooperative or lead agency, and consult your purchasing
         counsel before award.{' '}
-        © {new Date().getFullYear()} NJ Facilities Procurement Platform
+        © {new Date().getFullYear()} NJ Vetted Vendors
       </div>
     </footer>
   )

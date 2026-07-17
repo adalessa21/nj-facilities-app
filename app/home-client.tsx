@@ -629,7 +629,7 @@ export default function HomeClient({
       <header className="bg-[#1F3864] text-white">
         <div className="max-w-4xl mx-auto px-4 py-5">
           <div className="flex items-center justify-between mb-1">
-            <div className="text-xs tracking-widest uppercase text-white/50">NJ Facilities Procurement Platform · Beta</div>
+            <div className="text-xs tracking-widest uppercase text-white/50">NJ Vetted Vendors · Beta</div>
             {user ? (
               <div className="flex items-center gap-3">
                 <span className="text-xs text-white/50 hidden sm:block">{user.email}</span>

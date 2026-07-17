@@ -67,7 +67,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (result.kind === 'shared') {
     const d = result.data
     return {
-      title: `${d.vendor_name} — ${d.institution_name} Shared Contract | NJ Facilities Procurement Platform`,
+      title: `${d.vendor_name} — ${d.institution_name} Shared Contract | NJ Vetted Vendors`,
       description: `${d.trade_category} on-call contract shared by ${d.institution_name}. Expiration: ${formatDate(d.expiration_date)}.`,
     }
   }
@@ -75,7 +75,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { row, coop, vendors } = result
   const vendorNames = vendors.map((v: any) => v.company_name).join(', ')
   return {
-    title: `${row.contract_name} — ${coop.abbreviation === 'NJ State' ? 'NJ State Contract' : coop.abbreviation} | NJ Facilities Procurement Platform`,
+    title: `${row.contract_name} — ${coop.abbreviation === 'NJ State' ? 'NJ State Contract' : coop.abbreviation} | NJ Vetted Vendors`,
     description: `${row.trade_category} cooperative contract ${row.contract_number}. Vendors: ${vendorNames || 'TBD'}. Expires ${formatDate(row.expiration_date)}.`,
   }
 }
@@ -129,7 +129,7 @@ export default async function ContractDetailPage({ params }: Params) {
       <div className="min-h-screen bg-gray-50">
         <header className="bg-[#1F3864] text-white">
           <div className="max-w-3xl mx-auto px-4 py-5">
-            <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform</div>
+            <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Vetted Vendors</div>
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-xl font-bold leading-snug">{d.vendor_name} — On-Call {d.trade_category}</h1>
               <div className="flex items-center gap-2 shrink-0">
@@ -254,7 +254,7 @@ export default async function ContractDetailPage({ params }: Params) {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-[#1F3864] text-white">
         <div className="max-w-3xl mx-auto px-4 py-5">
-          <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Facilities Procurement Platform</div>
+          <div className="text-xs tracking-widest uppercase text-white/50 mb-1">NJ Vetted Vendors</div>
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-xl font-bold leading-snug">{row.contract_name}</h1>
             <div className="flex items-center gap-2 shrink-0">

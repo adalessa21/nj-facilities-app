@@ -7,7 +7,7 @@ import HomeClient from './home-client'
 export const revalidate = 60
 
 export const metadata = {
-  title: 'NJ Facilities Procurement Platform — Cooperative Contract Search for NJ Public Institutions',
+  title: 'NJ Vetted Vendors — Cooperative Contract Search for NJ Public Institutions',
   description: 'Search cooperative contracts from ESCNJ, NJ State Contract, Sourcewell, OMNIA, Bergen Co-op, and more for NJ public colleges, universities, and county governments.',
 }
 

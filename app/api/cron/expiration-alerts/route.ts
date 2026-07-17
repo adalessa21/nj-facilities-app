@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
     const html = `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#111;">
         <div style="background:#1F3864;padding:16px 20px;border-radius:8px 8px 0 0;">
-          <span style="color:#fff;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.6;">NJ Facilities Procurement Platform</span>
+          <span style="color:#fff;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.6;">NJ Vetted Vendors</span>
         </div>
         <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
           <h2 style="margin:0 0 8px;font-size:18px;color:#1F3864;">
