@@ -29,7 +29,10 @@ interface Contract {
   cooperatives: Cooperative | Cooperative[]
 }
 
-interface Membership { cooperative_id: string }
+interface Membership { cooperative_id: string; notes?: string }
+
+// Broadly available co-ops — no membership required, but caveats apply.
+const BROAD_COOPS = new Set(['NJ State', 'NASPO', 'Sourcewell', 'OMNIA'])
 
 // ── Co-op color map ───────────────────────────────────────────────────────────
 const COOP_STYLES: Record<string, { bg: string; text: string; border: string }> = {
@@ -56,11 +59,12 @@ function CoopBadge({ abbr }: { abbr: string }) {
 
 // ── Vendor Detail Panel ───────────────────────────────────────────────────────
 function VendorPanel({
-  vendor, contracts, entityMemberships, entityName, onViewLanguage, onClose,
+  vendor, contracts, entityMemberships, membershipNotes, entityName, onViewLanguage, onClose,
 }: {
   vendor: Vendor
   contracts: GroupedContract[]
   entityMemberships: string[]
+  membershipNotes: Record<string, string>
   entityName?: string
   onViewLanguage: (text: string) => void
   onClose: () => void
@@ -146,6 +150,9 @@ function VendorPanel({
                             ) : <CoopBadge abbr={c.coop.abbreviation} />}
                             <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{c.contract_number}</span>
                           </div>
+                          {!isShared && BROAD_COOPS.has(c.coop.abbreviation) && membershipNotes[c.cooperative_id] && (
+                            <div className="text-xs text-sky-600 mt-0.5 italic">{membershipNotes[c.cooperative_id]}</div>
+                          )}
                           <div className="text-xs text-gray-400 mt-1">
                             Expires {exp}
                             {days > 0 && days < 180 && <span className="text-amber-600 font-medium"> · {days} days left</span>}
@@ -263,6 +270,7 @@ export default function HomeClient({
 
   const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null)
   const [entityMemberships, setEntityMemberships] = useState<string[]>([])
+  const [membershipNotes, setMembershipNotes] = useState<Record<string, string>>({})
   const [membershipsLoaded, setMembershipsLoaded] = useState(false)
   const [selectedTrades, setSelectedTrades] = useState<string[]>([])
   const [selectedCoops, setSelectedCoops] = useState<string[]>([])
@@ -337,6 +345,7 @@ export default function HomeClient({
   useEffect(() => {
     if (!selectedEntity) {
       setEntityMemberships([])
+      setMembershipNotes({})
       setMembershipsLoaded(false)
       return
     }
@@ -344,10 +353,15 @@ export default function HomeClient({
     async function loadMemberships() {
       const { data } = await supabase
         .from('memberships')
-        .select('cooperative_id')
+        .select('cooperative_id, notes')
         .eq('entity_id', selectedEntity!.id)
         .eq('status', 'confirmed')
-      if (data) setEntityMemberships(data.map((m: Membership) => m.cooperative_id))
+      if (data) {
+        setEntityMemberships(data.map((m: Membership) => m.cooperative_id))
+        const notes: Record<string, string> = {}
+        data.forEach((m: Membership) => { if (m.notes) notes[m.cooperative_id] = m.notes })
+        setMembershipNotes(notes)
+      }
       setMembershipsLoaded(true)
     }
     loadMemberships()
@@ -597,6 +611,21 @@ export default function HomeClient({
                 <span>Restricted — not authorized for {selectedEntity.name}</span>
               </div>
             )
+          ) : BROAD_COOPS.has(coopAbbr) ? (
+            <div className="text-xs text-sky-700 bg-sky-50 border border-sky-200 px-3 py-2 rounded-lg">
+              <div className="flex items-center gap-1.5">
+                <span>○</span>
+                <span>Open to NJ public entities via {coopLabel}</span>
+                {!isPending && (
+                  <button onClick={() => setSelectedVendor(c.vendorList[0])} className="ml-auto text-teal-600 underline underline-offset-2 hover:text-teal-800 whitespace-nowrap">
+                    View profiles →
+                  </button>
+                )}
+              </div>
+              {membershipNotes[c.cooperative_id] && (
+                <div className="text-sky-600/80 mt-0.5 pl-4">{membershipNotes[c.cooperative_id]}</div>
+              )}
+            </div>
           ) : (
             <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
               <span>✓</span>
@@ -785,6 +814,7 @@ export default function HomeClient({
 
       {selectedVendor && (
         <VendorPanel vendor={selectedVendor} contracts={groupedContracts} entityMemberships={entityMemberships}
+          membershipNotes={membershipNotes}
           entityName={selectedEntity?.name} onViewLanguage={text => setPiggybackModal(text)} onClose={() => setSelectedVendor(null)} />
       )}
 
